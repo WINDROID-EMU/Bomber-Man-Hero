@@ -403,17 +403,6 @@ extern void Create_GfxTask(void);
 extern void func_8001D3CC(void);
 
 RECOMP_PATCH void func_8001D9E4(void* arg0) {
-
-    // @recomp unset skip if it was set previously.
-    if (skipInterpolationOneFrame_Camera) {
-        skipInterpolationOneFrame_Camera--;
-    }
-
-    // @recomp do the same for the other variable for objects.
-    if (skipInterpolationOneFrame) {
-        skipInterpolationOneFrame--;
-    }
-
     func_8005F0F4();
     D_8016E10C = arg0;
     D_8016E104 = &D_8016E10C->unk68;
@@ -447,6 +436,16 @@ RECOMP_PATCH void func_8001D9E4(void* arg0) {
     gSPEndDisplayList(gMasterDisplayList++);
 
     //recomp_printf("Test word: 0x%08X 0x%08X\n", ((u32*)D_8016E10C->unk68.gfxWork)[4], ((u32*)D_8016E10C->unk68.gfxWork)[5]);
+    
+    // @recomp unset skip if it was set previously.
+    if (skipInterpolationOneFrame_Camera > 0) {
+        skipInterpolationOneFrame_Camera--;
+    }
+
+    // @recomp do the same for the other variable for objects.
+    if (skipInterpolationOneFrame > 0) {
+        skipInterpolationOneFrame--;
+    }
 
     frameCount++;
 
@@ -551,6 +550,9 @@ s32 func_8000E944(Gfx** gfx, UnkStruct_F280_1* arg1, s32 arg2, s32 arg3, s32 arg
 // if the object is set to 1, interpolation is not done for that frame
 u32 gTrackedObjects[256] = {0};
 
+// if these are set, these will be unset after it is used automatically.
+u32 gTrackedObjects_OneTime[256] = {0};
+
 void breakpoint_me(int blah);
 
 RECOMP_EXPORT int isObjectTrackedForNoInterpolationLastFrame(s32 objID) {
@@ -633,17 +635,36 @@ RECOMP_PATCH s32 func_8000EEE8(Gfx** gfx, UnkStruct_F280_1* arg1, s32 arg2, s32 
         }
         guMtxF2L(D_80055828[D_80055820], &D_8016E104->unkE0[id]);
 
+        int newTag = taggedID;
+
+        // if the tag is within the demo/menu range, we will restore it to the OG ID for tracking purposes for this function.
         if (taggedID >= 0x4000 && taggedID <= 0x6FFF) {
-            // dont go far into this array. This code is shite. Clean up
-        } else if (gTrackedObjects[taggedID] == 1) {
+            newTag = taggedID - 0x4000;
+            newTag &= 0xFF00;
+            newTag >>= 8;
+
+            if (gTrackedObjects[newTag] == 1) {
+                tagged = 0;
+            } else if (gTrackedObjects_OneTime[newTag] != 0) {
+                tagged = 0;
+                gTrackedObjects_OneTime[newTag]--;
+            }
+        } else {
+            // trying to combine the logic just broke demos. fuck it. im duplicating it.
+            if (gTrackedObjects[taggedID] == 1) {
+                tagged = 0;
+            } else if (gTrackedObjects_OneTime[taggedID] != 0) {
+                tagged = 0;
+                gTrackedObjects_OneTime[taggedID]--;
+            }
+        }
+
+        if (skipInterpolationOneFrame > 0) {
+            recomp_printf("skipping interpolation for object 0x%08X, %d\n", taggedID, skipInterpolationOneFrame);
             tagged = 0;
         }
 
-        if (skipInterpolationOneFrame) {
-            recomp_printf("skipping interpolation for object 0x%08X\n", taggedID);
-        }
-
-        if (skipInterpolationOneFrame == 0 && tagged) {
+        if (tagged) {
             if (id == 0xFFFFFFFF) {
                 recomp_printf("WARNING: Something passed -1! Defaulting to 0xDEADBEEF 0x%08X\n", taggedID);
                 gEXMatrixGroupDecomposedNormal(dlist++, 0xDEADBEEF, G_EX_PUSH, G_MTX_MODELVIEW, G_EX_EDIT_NONE);
@@ -655,7 +676,7 @@ RECOMP_PATCH s32 func_8000EEE8(Gfx** gfx, UnkStruct_F280_1* arg1, s32 arg2, s32 
         gSPMatrix(dlist++, osVirtualToPhysical(&D_8016E104->unkE0[id++]),
                   G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
         gSPDisplayList(dlist++, (s32) (spEC[arg5].dlist) + (u8*)arg1);
-        if (skipInterpolationOneFrame == 0 && tagged) {
+        if (tagged) {
             gEXPopMatrixGroup(dlist++, G_MTX_MODELVIEW);
         }
         D_80055820 -= spA0;
