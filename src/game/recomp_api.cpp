@@ -231,8 +231,14 @@ extern "C" void osPfsIsPlug_recomp(uint8_t * rdram, recomp_context* ctx) {
     // TODO
 }
 
-extern "C" void __f_to_ull_recomp(uint8_t * rdram, recomp_context* ctx) {
-    // TODO
+// TODO: Validate this
+extern "C" void __f_to_ull_recomp(uint8_t* rdram, recomp_context* ctx) {
+    float input = ctx->f12.fl;
+
+    uint64_t result = (uint64_t) input;
+
+    ctx->r2 = (uint32_t) (result >> 32);
+    ctx->r3 = (uint32_t) (result >> 0); 
 }
 
 extern "C" void __osPfsSelectBank_recomp(uint8_t * rdram, recomp_context* ctx) {
