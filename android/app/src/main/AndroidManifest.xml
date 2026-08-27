@@ -43,6 +43,13 @@
             android:theme="@android:style/Theme.Translucent.NoTitleBar"
             android:exported="false" />
 
+        <!-- Driver selector activity for custom Vulkan driver selection -->
+        <activity
+            android:name=".DriverSelectorActivity"
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+            android:screenOrientation="sensorLandscape"
+            android:exported="false" />
+
     </application>
 
 </manifest>

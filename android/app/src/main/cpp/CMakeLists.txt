@@ -16,23 +16,6 @@ endif()
 
 message(STATUS "BMHERO_ROOT = ${BMHERO_ROOT}")
 
-# ---- DXC Shader Compiler ----
-# ---- DXC Shader Compiler ----
-set(DXC_COMMON_OPTS "-I${BMHERO_ROOT}/lib/rt64/src")
-set(DXC_DXIL_OPTS "-Wno-ignored-attributes")
-set(DXC_SPV_OPTS "-spirv" "-fspv-target-env=vulkan1.0" "-fvk-use-dx-layout")
-set(DXC_PS_OPTS "${DXC_COMMON_OPTS}" "-E" "PSMain" "-T" "ps_6_0" "-D" "DYNAMIC_RENDER_PARAMS")
-set(DXC_VS_OPTS "${DXC_COMMON_OPTS}" "-E" "VSMain" "-T" "vs_6_0" "-D" "DYNAMIC_RENDER_PARAMS" "-fvk-invert-y")
-set(DXC_CS_OPTS "${DXC_COMMON_OPTS}" "-E" "CSMain" "-T" "cs_6_0")
-set(DXC_GS_OPTS "${DXC_COMMON_OPTS}" "-E" "GSMain" "-T" "gs_6_0")
-set(DXC_RT_OPTS "${DXC_COMMON_OPTS}" "-D" "RT_SHADER" "-T" "lib_6_3" "-fspv-target-env=vulkan1.1spirv1.4" "-fspv-extension=SPV_KHR_ray_tracing" "-fspv-extension=SPV_EXT_descriptor_indexing")
-
-if (CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "x86_64" OR CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "AMD64" OR NOT DEFINED CMAKE_HOST_SYSTEM_PROCESSOR)
-    set(DXC "LD_LIBRARY_PATH=${BMHERO_ROOT}/lib/rt64/src/contrib/dxc/lib/x64" "${BMHERO_ROOT}/lib/rt64/src/contrib/dxc/bin/x64/dxc-linux" CACHE STRING "DXC executable" FORCE)
-else()
-    set(DXC "LD_LIBRARY_PATH=${BMHERO_ROOT}/lib/rt64/src/contrib/dxc/lib/arm64" "${BMHERO_ROOT}/lib/rt64/src/contrib/dxc/bin/arm64/dxc-linux" CACHE STRING "DXC executable" FORCE)
-endif()
-
 # ---- Android-specific settings ----
 add_compile_definitions(
     __ANDROID__
@@ -67,14 +50,39 @@ if (EXISTS "${SDL2_ANDROID_SOURCE_DIR}/CMakeLists.txt")
     set(SDL2_INCLUDE_DIRS "${SDL2_ANDROID_SOURCE_DIR}/include")
     set(SDL2_LIBRARIES SDL2-static)
     set(SDL2_FOUND TRUE)
+    # Create SDL2::SDL2 alias target so plume and rt64 can find it
+    if (NOT TARGET SDL2::SDL2)
+        add_library(SDL2::SDL2 ALIAS SDL2-static)
+    endif()
 else()
     message(FATAL_ERROR "SDL2 sources not found at ${SDL2_ANDROID_SOURCE_DIR}. Run: git clone https://github.com/libsdl-org/SDL.git android/SDL2")
+endif()
+
+# ---- libadrenotools ----
+# libadrenotools only supports arm64-v8a (Qualcomm Adreno GPUs).
+# For other ABIs we skip it and provide stub implementations.
+set(ADRENOTOOLS_DIR "${BMHERO_ROOT}/android/libadrenotools")
+if (CMAKE_ANDROID_ARCH_ABI STREQUAL "arm64-v8a")
+    if (EXISTS "${ADRENOTOOLS_DIR}/CMakeLists.txt")
+        message(STATUS "Building libadrenotools from: ${ADRENOTOOLS_DIR} (ABI=${CMAKE_ANDROID_ARCH_ABI})")
+        set(GEN_INSTALL_TARGET OFF CACHE BOOL "" FORCE)
+        set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+        add_subdirectory(${ADRENOTOOLS_DIR} ${CMAKE_BINARY_DIR}/libadrenotools)
+        set(ADRENOTOOLS_ENABLED TRUE)
+        add_compile_definitions(BMHERO_ADRENOTOOLS_ENABLED)
+    else()
+        message(WARNING "libadrenotools sources not found at ${ADRENOTOOLS_DIR} — continuing without AdrenoTools support")
+        set(ADRENOTOOLS_ENABLED FALSE)
+    endif()
+else()
+    message(STATUS "Skipping libadrenotools for ABI=${CMAKE_ANDROID_ARCH_ABI} (only arm64-v8a is supported)")
+    set(ADRENOTOOLS_ENABLED FALSE)
 endif()
 
 # ---- RT64 ----
 set(RT64_STATIC TRUE)
 set(RT64_SDL_WINDOW_VULKAN TRUE)
-set(PLUME_SDL_VULKAN_ENABLED TRUE)
+set(PLUME_SDL_VULKAN_ENABLED TRUE CACHE BOOL "" FORCE)
 
 # Android system libraries
 find_library(log-lib log)
@@ -91,6 +99,10 @@ set(SDL2_LIBRARIES "SDL2-static")
 add_subdirectory(${BMHERO_ROOT}/lib/rt64 ${CMAKE_BINARY_DIR}/rt64)
 # After rt64 target exists, add SDL2 includes so rt64 compiles correctly
 target_include_directories(rt64 PRIVATE "${BMHERO_ROOT}/android/SDL2/include")
+# Ensure plume also has SDL2 includes (needed for SDL_vulkan.h on Android)
+if (TARGET plume)
+    target_include_directories(plume PUBLIC "${BMHERO_ROOT}/android/SDL2/include")
+endif()
 
 # ---- N64ModernRuntime ----
 add_subdirectory(${BMHERO_ROOT}/lib/N64ModernRuntime ${CMAKE_BINARY_DIR}/N64ModernRuntime)
@@ -247,6 +259,8 @@ target_link_libraries(BMHeroRecompiled
     librecomp
     ultramodern
     rt64
+    # AdrenoTools (only available on arm64-v8a)
+    $<$<BOOL:${ADRENOTOOLS_ENABLED}>:adrenotools>
     # SDL2
     ${SDL2_LIBRARIES}
     # Android system libraries
@@ -254,4 +268,8 @@ target_link_libraries(BMHeroRecompiled
     ${android-lib}
     ${vulkan-lib}
     # C++ STL
+    c++_shared
 )
+
+# Ensure file_to_c is built before BMHeroRecompiled
+add_dependencies(BMHeroRecompiled file_to_c)

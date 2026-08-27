@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "name": "Turnip-R1-26.0.0",
+  "description": "Compiled from Mesa tag 26.0.0, Commit cc1d942727c",
+  "author": "mesa-ci",
+  "packageVersion": "1",
+  "vendor": "Mesa",
+  "driverVersion": "26.0.0/vk1.4.328",
+  "minApi": 27,
+  "libraryName": "vulkan.ad07XX.so"
+}

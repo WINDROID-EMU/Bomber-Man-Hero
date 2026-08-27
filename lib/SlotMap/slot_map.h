@@ -46,14 +46,13 @@
 #define SLOT_MAP_ALLOC(sizeInBytes, alignment) _mm_malloc(sizeInBytes, alignment)
 #define SLOT_MAP_FREE(ptr) _mm_free(ptr)
 #elif defined(__ANDROID__)
-#include <stdlib.h>
-static inline void* android_slot_map_alloc(size_t sizeInBytes, size_t alignment) {
+// Android Bionic: aligned_alloc is only available since API 28, use posix_memalign (API 16+)
+static inline void* slot_map_android_memalign(size_t sizeInBytes, size_t alignment) {
     void* ptr = nullptr;
-    if (alignment < sizeof(void*)) alignment = sizeof(void*);
     if (posix_memalign(&ptr, alignment, sizeInBytes) != 0) return nullptr;
     return ptr;
 }
-#define SLOT_MAP_ALLOC(sizeInBytes, alignment) android_slot_map_alloc(sizeInBytes, alignment)
+#define SLOT_MAP_ALLOC(sizeInBytes, alignment) slot_map_android_memalign(sizeInBytes, alignment)
 #define SLOT_MAP_FREE(ptr) free(ptr)
 #else
 // Posix

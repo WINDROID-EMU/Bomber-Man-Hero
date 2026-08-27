@@ -81,3 +81,28 @@ gamecontrollerdb.txt
 
 # RSP Microcode recompiled output
 aspMain.cpp
+
+# ================================================================
+# Android build
+# ================================================================
+# Gradle cache
+android/.gradle/
+
+# Gradle local properties (SDK/NDK paths)
+android/local.properties
+
+# IDE / IntelliJ cache (some project-level config is tracked)
+android/.idea/
+!.idea/misc.xml
+
+# Build outputs — APKs, compiled libs, intermediate artifacts
+android/app/build/
+android/app/.cxx/
+android/build/
+
+# Keystores
+*.keystore
+*.jks
+
+# Captured core dumps from sandbox
+/proc/**/coredump_filter

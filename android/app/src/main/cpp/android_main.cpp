@@ -14,9 +14,13 @@
 #include <jni.h>
 #include <android/log.h>
 #include <android/native_activity.h>
-#include <cstdlib>
+
 #include <cstring>
+#include <cstdlib>
 #include <string>
+
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_system.h>
 
 #define LOG_TAG "BMHeroRecomp"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  LOG_TAG, __VA_ARGS__)
@@ -33,24 +37,93 @@
 
 #include "nfd.h"
 
-// SDL2 already provides JNI_OnLoad and manages the JavaVM.
-// SDL_AndroidGetJNIEnv() (returns void*, cast to JNIEnv*) is the safe cross-thread accessor.
-// We include SDL.h before using it to get the real declaration.
+// ============================================================
+// NFD internal helpers (normally provided by nfd platform impls)
+// We provide them since we're replacing the entire NFD library on Android.
+// ============================================================
+static char g_nfd_error[256] = {0};
+
+static void NFDi_SetError(const char* msg) {
+    if (msg) {
+        strncpy(g_nfd_error, msg, sizeof(g_nfd_error) - 1);
+        g_nfd_error[sizeof(g_nfd_error) - 1] = '\0';
+    }
+}
+
+template <typename T>
+static T* NFDi_Malloc(size_t bytes) {
+    T* ptr = static_cast<T*>(malloc(bytes));
+    if (!ptr) {
+        NFDi_SetError("NFDi_Malloc failed.");
+    }
+    return ptr;
+}
+
+template <typename T>
+static void NFDi_Free(T* ptr) {
+    free(static_cast<void*>(ptr));
+}
+
+// Public NFD free functions (called by user code)
+extern "C" void NFD_FreePathN(nfdnchar_t* filePath) {
+    NFDi_Free(filePath);
+}
+extern "C" void NFD_FreePathU8(nfdu8char_t* filePath) {
+    NFDi_Free(filePath);
+}
+
+// Global JVM reference — initialized lazily (SDL2 provides its own JNI_OnLoad
+// and we cannot have duplicate symbols).
+static JavaVM* g_jvm = nullptr;
 
 // Cache the MainActivity class and method references
 static jclass    g_mainActivityClass = nullptr;
 static jmethodID g_openFilePickerMethod = nullptr;
 
-// SDL_AndroidGetJNIEnv returns void* per SDL_system.h
-extern "C" void* SDL_AndroidGetJNIEnv(void);
+/**
+ * Get the JavaVM pointer on demand.
+ * Use SDL_AndroidGetJNIEnv() to get a JNIEnv first, then extract the JavaVM.
+ */
+static JavaVM* GetJavaVM() {
+    if (!g_jvm) {
+        // SDL_AndroidGetJNIEnv() returns already-attached JNIEnv* (cast to void*)
+        JNIEnv* env = static_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
+        if (env) {
+            JavaVM* vm = nullptr;
+            if (env->GetJavaVM(&vm) == JNI_OK && vm) {
+                g_jvm = vm;
+            }
+        }
+    }
+    return g_jvm;
+}
 
 /**
- * Helper: get a JNIEnv for the current thread via SDL2.
- * SDL2 attaches native threads automatically.
- * needsDetach is kept for API compatibility but SDL handles detach itself.
+ * Helper: get a JNIEnv for the current thread.
+ * First try SDL_AndroidGetJNIEnv (works on SDL's thread). If that fails,
+ * attach the thread to the JVM directly.
  */
-static JNIEnv* GetJNIEnv(bool* /*needsDetach*/ = nullptr) {
-    return reinterpret_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
+static JNIEnv* GetJNIEnv(bool* needsDetach = nullptr) {
+    if (needsDetach) *needsDetach = false;
+
+    // Fast path: SDL_AndroidGetJNIEnv() returns env for the SDL thread
+    JNIEnv* env = static_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
+    if (env) {
+        return env;
+    }
+
+    // Slow path: attach the current thread to the JVM
+    JavaVM* const vm = GetJavaVM();
+    if (!vm) return nullptr;
+
+    int result = vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
+    if (result == JNI_EDETACHED) {
+        JavaVMAttachArgs args = { JNI_VERSION_1_6, "BMHeroNativeThread", nullptr };
+        result = vm->AttachCurrentThread(&env, &args);
+        if (needsDetach) *needsDetach = (result == JNI_OK);
+    }
+
+    return (result == JNI_OK) ? env : nullptr;
 }
 
 /**
@@ -61,7 +134,8 @@ static JNIEnv* GetJNIEnv(bool* /*needsDetach*/ = nullptr) {
  * @return            allocated string with the file path (caller must free), or nullptr
  */
 static char* AndroidOpenFilePicker(const char* filterList) {
-    JNIEnv* env = GetJNIEnv();
+    bool needsDetach = false;
+    JNIEnv* env = GetJNIEnv(&needsDetach);
     if (!env) {
         LOGE("AndroidOpenFilePicker: failed to get JNIEnv");
         return nullptr;
@@ -72,6 +146,7 @@ static char* AndroidOpenFilePicker(const char* filterList) {
     jclass sdlClass = env->FindClass("org/libsdl/app/SDLActivity");
     if (!sdlClass) {
         LOGE("AndroidOpenFilePicker: SDLActivity class not found");
+        if (needsDetach) g_jvm->DetachCurrentThread();
         return nullptr;
     }
 
@@ -80,6 +155,7 @@ static char* AndroidOpenFilePicker(const char* filterList) {
     if (!getContextMethod) {
         env->DeleteLocalRef(sdlClass);
         LOGE("AndroidOpenFilePicker: getContext method not found");
+        if (needsDetach) g_jvm->DetachCurrentThread();
         return nullptr;
     }
 
@@ -87,6 +163,7 @@ static char* AndroidOpenFilePicker(const char* filterList) {
     env->DeleteLocalRef(sdlClass);
     if (!activityObj) {
         LOGE("AndroidOpenFilePicker: failed to get activity instance");
+        if (needsDetach) g_jvm->DetachCurrentThread();
         return nullptr;
     }
 
@@ -100,6 +177,7 @@ static char* AndroidOpenFilePicker(const char* filterList) {
         LOGE("AndroidOpenFilePicker: openFilePicker method not found on activity");
         env->DeleteLocalRef(activityClass);
         env->DeleteLocalRef(activityObj);
+        if (needsDetach) g_jvm->DetachCurrentThread();
         return nullptr;
     }
 
@@ -120,16 +198,15 @@ static char* AndroidOpenFilePicker(const char* filterList) {
         env->DeleteLocalRef(resultStr);
     }
 
+    if (needsDetach) g_jvm->DetachCurrentThread();
+
     LOGI("AndroidOpenFilePicker: result = %s", result ? result : "(null)");
     return result;
 }
 
 // ----------------------------------------------------------------
 // NFD API Implementation (replaces nfd library on Android)
-// All functions must use C linkage to match nfd.h's extern "C" block
 // ----------------------------------------------------------------
-
-extern "C" {
 
 nfdresult_t NFD_Init() {
     LOGI("NFD_Init: Android stub");
@@ -145,7 +222,6 @@ nfdresult_t NFD_OpenDialogN(nfdnchar_t** outPath,
                              nfdfiltersize_t filterCount,
                              const nfdnchar_t* defaultPath)
 {
-    (void)defaultPath;
     // Build extension filter string from filterList
     std::string extensions;
     if (filterList && filterCount > 0) {
@@ -164,8 +240,8 @@ nfdresult_t NFD_OpenDialogN(nfdnchar_t** outPath,
         return NFD_CANCEL;
     }
 
-    // NFD allocates the result string with malloc
-    *outPath = (nfdnchar_t*)malloc(strlen(path) + 1);
+    // NFD allocates the result string with NFD_FreePathN
+    *outPath = NFDi_Malloc<nfdnchar_t>(strlen(path) + 1);
     if (!*outPath) {
         free(path);
         return NFD_ERROR;
@@ -220,25 +296,42 @@ nfdresult_t NFD_PathSet_GetPathN(const nfdpathset_t* pathSet, nfdpathsetsize_t i
     return NFD_ERROR;
 }
 
-void NFD_FreePathN(nfdnchar_t* filePath) {
-    if (filePath) {
-        free(filePath);
-    }
+void NFD_PathSet_FreePathN(const nfdnchar_t* filePath) {
+    (void)filePath;
 }
 
 void NFD_PathSet_Free(const nfdpathset_t* pathSet) {
     (void)pathSet;
 }
 
-} // extern "C"
-
 // ============================================================
 // Android filesystem helpers
 // ============================================================
 
-#include <SDL2/SDL.h>
-#include <string>
 #include <filesystem>
+
+/**
+ * Initialize AdrenoTools driver loading for Android.
+ * Called from create_gfx() in the included main.cpp before SDL init.
+ * This sets up custom Vulkan driver loading support for Qualcomm Adreno GPUs.
+ */
+extern "C" void init_adrenotools_driver() {
+#ifdef BMHERO_ADRENOTOOLS_ENABLED
+    LOGI("init_adrenotools_driver: initializing adrenotools");
+    const char* internalPath = SDL_AndroidGetInternalStoragePath();
+    const char* nativeLibDir = SDL_AndroidGetExternalStoragePath();
+
+    if (internalPath) {
+        LOGI("  Internal storage path: %s", internalPath);
+    }
+    if (nativeLibDir) {
+        LOGI("  External storage path: %s", nativeLibDir);
+    }
+    LOGI("init_adrenotools_driver: done (actual driver open performed by Vulkan setup)");
+#else
+    LOGI("init_adrenotools_driver: AdrenoTools not available for this ABI (stub)");
+#endif
+}
 
 namespace android_fs {
 

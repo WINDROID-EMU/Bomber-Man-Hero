@@ -81,6 +81,12 @@ void exit_error(const char* str, Ts ...args) {
 }
 
 ultramodern::gfx_callbacks_t::gfx_data_t create_gfx() {
+#ifdef __ANDROID__
+    // Initialize AdrenoTools for custom Vulkan driver loading before SDL/Vulkan init
+    extern void init_adrenotools_driver();
+    init_adrenotools_driver();
+#endif
+
     SDL_SetHint(SDL_HINT_WINDOWS_DPI_AWARENESS, "permonitorv2");
     SDL_SetHint(SDL_HINT_GAMECONTROLLER_USE_BUTTON_LABELS, "0");
     SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS4_RUMBLE, "1");
