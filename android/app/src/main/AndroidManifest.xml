@@ -26,9 +26,10 @@
         android:extractNativeLibs="true"
         android:requestLegacyExternalStorage="true">
 
+        <!-- Title Activity (App Entry Point) -->
         <activity
-            android:name=".MainActivity"
-            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
+            android:name=".TitleActivity"
+            android:theme="@style/Theme.AppCompat.NoActionBar"
             android:screenOrientation="landscape"
             android:launchMode="singleTask"
             android:exported="true">
@@ -37,6 +38,21 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Main Game Activity -->
+        <activity
+            android:name=".MainActivity"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
+            android:screenOrientation="landscape"
+            android:launchMode="singleTask"
+            android:exported="false" />
+
+        <!-- Settings Activity -->
+        <activity
+            android:name=".SettingsActivity"
+            android:theme="@style/Theme.AppCompat.NoActionBar"
+            android:screenOrientation="landscape"
+            android:exported="false" />
 
         <!-- File picker activity for ROM selection -->
         <activity

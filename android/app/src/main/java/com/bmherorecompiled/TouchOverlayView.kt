@@ -86,6 +86,7 @@ class TouchOverlayView(context: Context) : View(context) {
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+        this.alpha = (ConfigManager.touchOpacity / 100f).coerceIn(0.1f, 1.0f)
 
         // Draw Joystick Base
         paint.color = Color.argb(80, 255, 255, 255)

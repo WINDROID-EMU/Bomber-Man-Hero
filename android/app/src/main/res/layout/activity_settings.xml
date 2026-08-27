@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#FF0F172A"
+    android:padding="16dp">
+
+    <!-- Header Toolbar -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="⚙️ Configurações do Projeto"
+            android:textColor="#F8FAFC"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:layout_centerVertical="true" />
+
+        <Button
+            android:id="@+id/btnSave"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:text="💾 Salvar"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:background="@drawable/button_bg_primary"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:layout_alignParentEnd="true" />
+
+        <Button
+            android:id="@+id/btnReset"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:text="🔄 Padrão"
+            android:textColor="#F8FAFC"
+            android:textSize="14sp"
+            android:background="@drawable/button_bg_secondary"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:layout_toStartOf="@id/btnSave"
+            android:layout_marginEnd="8dp" />
+
+    </RelativeLayout>
+
+    <!-- Scrollable Settings Container -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <!-- Left Panel: Graphics Settings -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:background="@drawable/card_bg_dark"
+                android:padding="16dp"
+                android:layout_marginEnd="8dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📺 Gráficos (Vulkan Engine)"
+                    android:textColor="#38BDF8"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="12dp" />
+
+                <!-- Resolution -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Resolução Padrão"
+                    android:textColor="#94A3B8"
+                    android:textSize="13sp" />
+                <Spinner
+                    android:id="@+id/spinResolution"
+                    android:layout_width="match_parent"
+                    android:layout_height="40dp"
+                    android:background="#1E293B"
+                    android:layout_marginBottom="12dp" />
+
+                <!-- Aspect Ratio -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Proporção da Tela"
+                    android:textColor="#94A3B8"
+                    android:textSize="13sp" />
+                <Spinner
+                    android:id="@+id/spinAspectRatio"
+                    android:layout_width="match_parent"
+                    android:layout_height="40dp"
+                    android:background="#1E293B"
+                    android:layout_marginBottom="12dp" />
+
+                <!-- MSAA -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Anti-Aliasing (MSAA)"
+                    android:textColor="#94A3B8"
+                    android:textSize="13sp" />
+                <Spinner
+                    android:id="@+id/spinMSAA"
+                    android:layout_width="match_parent"
+                    android:layout_height="40dp"
+                    android:background="#1E293B" />
+
+            </LinearLayout>
+
+            <!-- Right Panel: Audio & Controls Settings -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:background="@drawable/card_bg_dark"
+                android:padding="16dp"
+                android:layout_marginStart="8dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🕹️ Controles &amp; Áudio"
+                    android:textColor="#4ADE80"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="12dp" />
+
+                <!-- Touch Opacity -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Opacidade dos Botões Touch"
+                        android:textColor="#94A3B8"
+                        android:textSize="13sp" />
+                    <TextView
+                        android:id="@+id/txtTouchOpacityValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="80%"
+                        android:textColor="#F8FAFC"
+                        android:textStyle="bold" />
+                </LinearLayout>
+                <SeekBar
+                    android:id="@+id/seekTouchOpacity"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:max="100"
+                    android:progress="80"
+                    android:layout_marginBottom="12dp" />
+
+                <!-- Vibration Strength -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Força da Vibração (Rumble)"
+                        android:textColor="#94A3B8"
+                        android:textSize="13sp" />
+                    <TextView
+                        android:id="@+id/txtVibrationValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="100%"
+                        android:textColor="#F8FAFC"
+                        android:textStyle="bold" />
+                </LinearLayout>
+                <SeekBar
+                    android:id="@+id/seekVibration"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:max="100"
+                    android:progress="100"
+                    android:layout_marginBottom="12dp" />
+
+                <!-- BGM Volume -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Volume da Música (BGM)"
+                        android:textColor="#94A3B8"
+                        android:textSize="13sp" />
+                    <TextView
+                        android:id="@+id/txtBgmValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="100%"
+                        android:textColor="#F8FAFC"
+                        android:textStyle="bold" />
+                </LinearLayout>
+                <SeekBar
+                    android:id="@+id/seekBgmVolume"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:max="100"
+                    android:progress="100" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </ScrollView>
+
+</LinearLayout>

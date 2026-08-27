@@ -63,6 +63,7 @@ class MainActivity : SDLActivity() {
         }
 
         checkAndRequestStoragePermissions()
+        ConfigManager.load()
 
         val touchOverlay = TouchOverlayView(this)
         val layoutParams = android.view.ViewGroup.LayoutParams(
