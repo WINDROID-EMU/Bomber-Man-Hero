@@ -4,12 +4,13 @@
     android:layout_height="match_parent"
     android:background="#FF0D1117">
 
-    <!-- Background Artwork -->
     <ImageView
         android:id="@+id/imgBackground"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:scaleType="centerCrop"
+        android:scaleType="fitCenter"
+        android:adjustViewBounds="true"
+        android:background="#FF000000"
         android:src="@drawable/bomber"
         android:contentDescription="Bomberman Hero Background" />
 
@@ -27,40 +28,11 @@
         android:padding="24dp"
         android:gravity="center_vertical">
 
-        <!-- Left Side: Title Header -->
-        <LinearLayout
+        <!-- Left Side: Empty Space to showcase artwork -->
+        <View
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1.2"
-            android:orientation="vertical"
-            android:paddingStart="24dp"
-            android:paddingEnd="24dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="BOMBERMAN HERO"
-                android:textColor="#FFFFFF"
-                android:textSize="38sp"
-                android:textStyle="bold"
-                android:shadowColor="#CC000000"
-                android:shadowDx="4"
-                android:shadowDy="4"
-                android:shadowRadius="8" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="RECOMPILED • PORT ANDROID"
-                android:textColor="#FF2ECC71"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.1"
-                android:shadowColor="#80000000"
-                android:shadowDx="2"
-                android:shadowDy="2"
-                android:shadowRadius="4" />
-        </LinearLayout>
+            android:layout_height="match_parent"
+            android:layout_weight="1.4" />
 
         <!-- Right Side: Menu Buttons Container -->
         <LinearLayout
