@@ -50,7 +50,10 @@ class MainActivity : SDLActivity() {
     override fun getMainFunction(): String = "SDL_main"
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         super.onCreate(savedInstanceState)
+
+        System.setProperty("nativeLibraryDir", applicationInfo.nativeLibraryDir)
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
@@ -58,24 +61,36 @@ class MainActivity : SDLActivity() {
             window.attributes.layoutInDisplayCutoutMode =
                 WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
         }
+
+        checkAndRequestStoragePermissions()
+
+        val touchOverlay = TouchOverlayView(this)
+        val layoutParams = android.view.ViewGroup.LayoutParams(
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT
+        )
+        mLayout.addView(touchOverlay, layoutParams)
+    }
+
+    private fun checkAndRequestStoragePermissions() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            val permissions = arrayOf(
+                android.Manifest.permission.READ_EXTERNAL_STORAGE,
+                android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+            )
+            val needed = permissions.filter {
+                checkSelfPermission(it) != android.content.pm.PackageManager.PERMISSION_GRANTED
+            }
+            if (needed.isNotEmpty()) {
+                requestPermissions(needed.toTypedArray(), 1002)
+            }
+        }
     }
 
     @Suppress("unused")
     fun openFilePicker(filterExtensions: String): String? {
-        setFilePickerResult(null)
-        setFilePickerReady(false)
-
-        val intent = Intent(this, FilePickerActivity::class.java).apply {
-            putExtra(FilePickerActivity.EXTRA_FILTER, filterExtensions)
-        }
-        startActivityForResult(intent, FILE_PICKER_REQUEST_CODE)
-
-        val deadline = System.currentTimeMillis() + 120_000
-        while (!isFilePickerReady() && System.currentTimeMillis() < deadline) {
-            Thread.sleep(50)
-        }
-
-        return getFilePickerResult()
+        val path = "/sdcard/BMH/bmhero.z64"
+        return if (java.io.File(path).exists()) path else null
     }
 
     @Deprecated("Deprecated in Java")

@@ -46,8 +46,9 @@ if (EXISTS "${SDL2_ANDROID_SOURCE_DIR}/CMakeLists.txt")
     set(SDL_SHARED OFF CACHE BOOL "" FORCE)
     set(SDL_STATIC ON  CACHE BOOL "" FORCE)
     set(SDL_TEST   OFF CACHE BOOL "" FORCE)
+    set(SDL_VULKAN ON  CACHE BOOL "" FORCE)
     add_subdirectory(${SDL2_ANDROID_SOURCE_DIR} ${CMAKE_BINARY_DIR}/SDL2)
-    set(SDL2_INCLUDE_DIRS "${SDL2_ANDROID_SOURCE_DIR}/include")
+    set(SDL2_INCLUDE_DIRS "${SDL2_ANDROID_SOURCE_DIR}/include" "${BMHERO_ROOT}/android")
     set(SDL2_LIBRARIES SDL2-static)
     set(SDL2_FOUND TRUE)
     # Create SDL2::SDL2 alias target so plume and rt64 can find it
@@ -93,12 +94,13 @@ find_library(vulkan-lib vulkan)
 # RT64 will skip find_package(SDL2) on Android thanks to our patch.
 # Provide real include dirs and library name so targets get proper includes.
 set(SDL2_FOUND TRUE)
-set(SDL2_INCLUDE_DIRS "${BMHERO_ROOT}/android/SDL2/include")
+set(SDL2_INCLUDE_DIRS "${BMHERO_ROOT}/android/SDL2/include" "${BMHERO_ROOT}/android")
 set(SDL2_LIBRARIES "SDL2-static")
 
 add_subdirectory(${BMHERO_ROOT}/lib/rt64 ${CMAKE_BINARY_DIR}/rt64)
-# After rt64 target exists, add SDL2 includes so rt64 compiles correctly
+# After rt64 target exists, add SDL2 includes and __ANDROID__ definition so rt64 compiles correctly
 target_include_directories(rt64 PRIVATE "${BMHERO_ROOT}/android/SDL2/include")
+target_compile_definitions(rt64 PUBLIC __ANDROID__)
 # Ensure plume also has SDL2 includes (needed for SDL_vulkan.h on Android)
 if (TARGET plume)
     target_include_directories(plume PUBLIC "${BMHERO_ROOT}/android/SDL2/include")

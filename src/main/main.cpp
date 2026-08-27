@@ -178,13 +178,13 @@ ultramodern::renderer::WindowHandle create_window(ultramodern::gfx_callbacks_t::
 #endif
 
 #if defined(__ANDROID__)
-    // On Android, create a fullscreen window matching the display size
+    // On Android, use the actual display width and height so SDL and Plume Vulkan get non-zero dimensions
     SDL_DisplayMode dm;
     SDL_GetCurrentDisplayMode(0, &dm);
     window = SDL_CreateWindow("Bomberman Hero: Recompiled",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         dm.w, dm.h,
-        flags | SDL_WINDOW_FULLSCREEN);
+        flags | SDL_WINDOW_SHOWN);
 #else
     window = SDL_CreateWindow("Bomberman Hero: Recompiled",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
@@ -645,6 +645,11 @@ void on_launcher_init(recompui::LauncherMenu *menu) {
     menu->remove_default_title();
 
     banjo::launcher_animation_setup(menu);
+
+#ifdef __ANDROID__
+    recomp::start_game(supported_games[0].game_id, "");
+    recompui::hide_all_contexts();
+#endif
 }
 
 #define REGISTER_FUNC(name) recomp::overlays::register_base_export(#name, name)
@@ -652,6 +657,14 @@ void on_launcher_init(recompui::LauncherMenu *menu) {
 int main(int argc, char** argv) {
     (void)argc;
     (void)argv;
+
+#ifdef __ANDROID__
+    auto app_dir = android_fs::get_app_data_dir();
+    android_fs::init_directories();
+    std::filesystem::current_path(app_dir);
+    android_fs::extract_apk_assets();
+#endif
+
     recomp::Version project_version{};
     if (!recomp::Version::from_string(version_string, project_version)) {
         ultramodern::error_handling::message_box(("Invalid version string: " + version_string).c_str());
@@ -792,7 +805,11 @@ int main(int argc, char** argv) {
 
     ultramodern::renderer::callbacks_t renderer_callbacks{
         .create_render_context = [](uint8_t* rdram, ultramodern::renderer::WindowHandle window_handle, bool developer_mode) {
+#ifdef __ANDROID__
+            auto presentation_mode = ultramodern::renderer::PresentationMode::Console;
+#else
             auto presentation_mode = ultramodern::renderer::PresentationMode::PresentEarly;
+#endif
             return recompui::renderer::create_render_context(rdram, window_handle, presentation_mode, developer_mode);
         },
     };

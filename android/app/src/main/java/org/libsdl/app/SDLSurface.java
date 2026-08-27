@@ -110,6 +110,12 @@ public class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
             return;
         }
 
+        if (width < height) {
+            int tmp = width;
+            width = height;
+            height = tmp;
+        }
+
         mWidth = width;
         mHeight = height;
         int nDeviceWidth = width;
@@ -121,6 +127,11 @@ public class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
                 mDisplay.getRealMetrics( realMetrics );
                 nDeviceWidth = realMetrics.widthPixels;
                 nDeviceHeight = realMetrics.heightPixels;
+                if (nDeviceWidth < nDeviceHeight) {
+                    int tmp = nDeviceWidth;
+                    nDeviceWidth = nDeviceHeight;
+                    nDeviceHeight = tmp;
+                }
             }
         } catch(Exception ignored) {
         }

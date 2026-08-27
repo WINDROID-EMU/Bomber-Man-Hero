@@ -5,9 +5,10 @@
     <uses-feature android:name="android.hardware.vulkan.version" android:version="0x00401000" android:required="true" />
     <uses-feature android:name="android.hardware.vulkan.level" android:version="0" android:required="true" />
 
-    <!-- Storage for ROM access -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32" />
+    <!-- Storage for ROM and BMH folder access -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_MEDIA_FILES" />
 
     <!-- Vibration for rumble -->
@@ -23,12 +24,12 @@
         android:hardwareAccelerated="true"
         android:allowBackup="false"
         android:extractNativeLibs="true"
-        android:requestLegacyExternalStorage="false">
+        android:requestLegacyExternalStorage="true">
 
         <activity
             android:name=".MainActivity"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
-            android:screenOrientation="sensorLandscape"
+            android:screenOrientation="landscape"
             android:launchMode="singleTask"
             android:exported="true">
             <intent-filter>
@@ -47,7 +48,7 @@
         <activity
             android:name=".DriverSelectorActivity"
             android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
-            android:screenOrientation="sensorLandscape"
+            android:screenOrientation="landscape"
             android:exported="false" />
 
     </application>

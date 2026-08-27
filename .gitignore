@@ -104,5 +104,9 @@ android/build/
 *.keystore
 *.jks
 
+# Temporary local build tools
+build-recomp/
+file_to_c
+
 # Captured core dumps from sandbox
 /proc/**/coredump_filter
