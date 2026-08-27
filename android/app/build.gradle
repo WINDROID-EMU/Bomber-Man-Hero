@@ -1,0 +1,84 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.bmherorecompiled'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'com.bmherorecompiled'
+        minSdk 26
+        targetSdk 36
+        versionCode 1
+        versionName '0.7.3'
+
+        ndk {
+            abiFilters 'arm64-v8a', 'x86_64'
+        }
+
+        externalNativeBuild {
+            cmake {
+                cppFlags '-std=c++20 -fms-extensions -fno-strict-aliasing'
+                arguments '-DANDROID_STL=c++_shared',
+                        '-DANDROID_PLATFORM=android-26',
+                        '-DRT64_STATIC=TRUE',
+                        '-DRT64_SDL_WINDOW_VULKAN=TRUE',
+                        '-DBMHERO_ANDROID=TRUE',
+                        '-DHLSL_CPU=1',
+                        '-DCMAKE_CXX_STANDARD=20',
+                        "-DRECOMP_FRONTEND_N64MODERNRUNTIME_PATH=${projectDir}/../../lib/N64ModernRuntime",
+                        "-DRECOMP_FRONTEND_RT64_PATH=${projectDir}/../../lib/rt64",
+                        "-DBMHERO_PROJECT_ROOT=${projectDir}/../.."
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            debuggable true
+            jniDebuggable true
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+
+    kotlinOptions {
+        jvmTarget = '11'
+    }
+
+    externalNativeBuild {
+        cmake {
+            path 'src/main/cpp/CMakeLists.txt'
+            version '3.22.1'
+        }
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    // Include game assets in the APK
+    sourceSets {
+        main {
+            assets.srcDirs = ["${projectDir}/../../assets"]
+        }
+    }
+
+    ndkVersion '29.0.14206865'
+}
+
+dependencies {
+    implementation libs.androidx.core.ktx
+    implementation libs.androidx.appcompat
+    implementation libs.androidx.activity
+    implementation libs.androidx.documentfile
+}

@@ -8,7 +8,9 @@
 #include <stdexcept>
 #include <cinttypes>
 
+#ifndef __ANDROID__
 #include "nfd.h"
+#endif
 
 #include "ultramodern/ultra64.h"
 #include "ultramodern/ultramodern.hpp"
@@ -16,6 +18,9 @@
 #define SDL_MAIN_HANDLED
 #ifdef _WIN32
 #include "SDL.h"
+#elif defined(__ANDROID__)
+#include "SDL2/SDL.h"
+// SDL_syswm.h is not needed on Android — ANativeWindow is accessed differently
 #else
 #include "SDL2/SDL.h"
 #include "SDL2/SDL_syswm.h"
@@ -108,7 +113,7 @@ ultramodern::input::connected_device_info_t get_connected_device_info(int contro
 
 #include "icon_bytes.h"
 
-#if defined(__gnu_linux__)
+#if defined(__gnu_linux__) && !defined(__ANDROID__)
 bool SetImageAsIcon(const char* filename, SDL_Window* window)
 {
     // Read data
@@ -162,36 +167,53 @@ ultramodern::renderer::WindowHandle create_window(ultramodern::gfx_callbacks_t::
 
 #if defined(__APPLE__)
     flags |= SDL_WINDOW_METAL;
-#elif defined(RT64_SDL_WINDOW_VULKAN)
+#elif defined(RT64_SDL_WINDOW_VULKAN) || defined(__ANDROID__)
     flags |= SDL_WINDOW_VULKAN;
 #endif
 
-    window = SDL_CreateWindow("Bomberman Hero: Recompiled", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1600, 900,  flags);
+#if defined(__ANDROID__)
+    // On Android, create a fullscreen window matching the display size
+    SDL_DisplayMode dm;
+    SDL_GetCurrentDisplayMode(0, &dm);
+    window = SDL_CreateWindow("Bomberman Hero: Recompiled",
+        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        dm.w, dm.h,
+        flags | SDL_WINDOW_FULLSCREEN);
+#else
+    window = SDL_CreateWindow("Bomberman Hero: Recompiled",
+        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        1600, 900, flags);
+#endif
 
     if (window == nullptr) {
         exit_error("Failed to create window: %s\n", SDL_GetError());
     }
 
+#if defined(__ANDROID__)
+    // On Android, SDL2 manages the ANativeWindow internally.
+    // WindowHandle just needs the SDL_Window* — RT64 Vulkan backend handles the rest.
+    return ultramodern::renderer::WindowHandle{ window };
+#elif defined(_WIN32)
     SDL_SysWMinfo wmInfo;
     SDL_VERSION(&wmInfo.version);
     SDL_GetWindowWMInfo(window, &wmInfo);
-
-#if defined(_WIN32)
     // There's a 50/50 chance to choose the icon where the smallest variant is either Banjo or Kazooie alone.
     bool choose_kazooie_icon = (rand() % 2 == 0);
     HICON new_icon = LoadIcon(GetModuleHandle(NULL), choose_kazooie_icon ? MAKEINTRESOURCE(APP_ICON_K) : MAKEINTRESOURCE(APP_ICON_B));
     SendMessage(wmInfo.info.win.window, WM_SETICON, ICON_SMALL2, (LPARAM)(new_icon));
-#elif defined(__linux__)
-    SetImageAsIcon("icons/app.png", window);
-#endif
-
-#if defined(_WIN32)
     return ultramodern::renderer::WindowHandle{ wmInfo.info.win.window, GetCurrentThreadId() };
-#elif defined(__linux__) || defined(__ANDROID__)
+#elif defined(__linux__)
+    SDL_SysWMinfo wmInfo;
+    SDL_VERSION(&wmInfo.version);
+    SDL_GetWindowWMInfo(window, &wmInfo);
+    SetImageAsIcon("icons/app.png", window);
     return ultramodern::renderer::WindowHandle{ window };
 #elif defined(__APPLE__)
+    SDL_SysWMinfo wmInfo;
+    SDL_VERSION(&wmInfo.version);
+    SDL_GetWindowWMInfo(window, &wmInfo);
     SDL_MetalView view = SDL_Metal_CreateView(window);
-    return ultramodern::renderer::WindowHandle{ wmInfo.info.cocoa.window,  SDL_Metal_GetLayer(view) };
+    return ultramodern::renderer::WindowHandle{ wmInfo.info.cocoa.window, SDL_Metal_GetLayer(view) };
 #else
     static_assert(false && "Unimplemented");
 #endif
@@ -524,6 +546,19 @@ void release_preload(PreloadContext& context) {
     context = {};
 }
 
+#elif defined(__ANDROID__)
+
+// On Android, the .so is always fully loaded by the OS — no preloading needed.
+struct PreloadContext {};
+
+bool preload_executable(PreloadContext& context) {
+    return true;
+}
+
+void release_preload(PreloadContext& context) {
+    (void)context;
+}
+
 #elif defined(__linux__) || defined(APPLE)
 
 struct PreloadContext {
@@ -537,6 +572,7 @@ bool preload_executable(PreloadContext& context) {
 }
 
 void release_preload(PreloadContext& context) {
+    (void)context;
 }
 
 #else
@@ -548,6 +584,7 @@ bool preload_executable(PreloadContext& context) {
 }
 
 void release_preload(PreloadContext& context) {
+    (void)context;
 }
 
 #endif
@@ -691,10 +728,15 @@ int main(int argc, char** argv) {
     }
 
     // Source controller mappings file
+#ifndef __ANDROID__
     std::u8string controller_db_path = (recompui::file::get_program_path() / "recompcontrollerdb.txt").u8string();
     if (SDL_GameControllerAddMappingsFromFile(reinterpret_cast<const char *>(controller_db_path.c_str())) < 0) {
         fprintf(stderr, "Failed to load controller mappings: %s\n", SDL_GetError());
     }
+#else
+    // On Android, load controller mappings from assets (bundled in the APK)
+    SDL_GameControllerAddMappingsFromFile("recompcontrollerdb.txt");
+#endif
 
     // Register fonts.
     recompui::register_primary_font("InterVariable.ttf", "Inter Variable");

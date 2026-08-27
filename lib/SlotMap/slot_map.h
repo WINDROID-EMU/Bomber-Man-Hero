@@ -45,6 +45,16 @@
 #include <xmmintrin.h>
 #define SLOT_MAP_ALLOC(sizeInBytes, alignment) _mm_malloc(sizeInBytes, alignment)
 #define SLOT_MAP_FREE(ptr) _mm_free(ptr)
+#elif defined(__ANDROID__)
+#include <stdlib.h>
+static inline void* android_slot_map_alloc(size_t sizeInBytes, size_t alignment) {
+    void* ptr = nullptr;
+    if (alignment < sizeof(void*)) alignment = sizeof(void*);
+    if (posix_memalign(&ptr, alignment, sizeInBytes) != 0) return nullptr;
+    return ptr;
+}
+#define SLOT_MAP_ALLOC(sizeInBytes, alignment) android_slot_map_alloc(sizeInBytes, alignment)
+#define SLOT_MAP_FREE(ptr) free(ptr)
 #else
 // Posix
 #include <stdlib.h>
