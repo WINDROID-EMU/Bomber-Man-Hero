@@ -57,7 +57,7 @@ jobs:
 
       - name: Build host file_to_c generator
         run: |
-          g++ -O3 -std=c++17 lib/rt64/src/tools/file_to_c/file_to_c.cpp -o file_to_c
+          g++ -O3 -std=c++17 tools/file_to_c.cpp -o file_to_c
           chmod +x file_to_c
 
       - name: Build Android Release APK
