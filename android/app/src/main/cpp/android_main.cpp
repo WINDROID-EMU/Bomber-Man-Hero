@@ -450,17 +450,34 @@ extern "C" void init_adrenotools_driver() {
 
     LOGI("AdrenoTools: hook_dir=%s, selected driver_type=%s", hook_dir.c_str(), driver_type.c_str());
 
+    // If system driver is selected, use standard system libvulkan.so directly without AdrenoTools hooks
+    if (driver_type == "system") {
+        LOGI("init_adrenotools_driver: Using system default Vulkan driver without AdrenoTools hooks.");
+        return;
+    }
+
     void* handle = nullptr;
 
-    if (driver_type == "custom" && !custom_driver_path.empty() && !custom_driver_lib.empty()) {
-        LOGI("init_adrenotools_driver: Attempting to load custom driver (%s / %s)...", custom_driver_path.c_str(), custom_driver_lib.c_str());
+    if (driver_type == "custom" && !custom_driver_path.empty()) {
+        std::filesystem::path cdp(custom_driver_path);
+        std::string custom_dir = custom_driver_path;
+        std::string custom_lib = custom_driver_lib;
+
+        if (std::filesystem::is_regular_file(cdp) || custom_driver_path.find(".so") != std::string::npos) {
+            if (custom_lib.empty()) {
+                custom_lib = cdp.filename().string();
+            }
+            custom_dir = cdp.parent_path().string();
+        }
+
+        LOGI("init_adrenotools_driver: Attempting to load custom driver (%s / %s)...", custom_dir.c_str(), custom_lib.c_str());
         handle = adrenotools_open_libvulkan(
             RTLD_NOW,
             ADRENOTOOLS_DRIVER_CUSTOM,
             internal_dir,
             hook_dir.c_str(),
-            custom_driver_path.c_str(),
-            custom_driver_lib.c_str(),
+            custom_dir.c_str(),
+            custom_lib.c_str(),
             nullptr,
             nullptr
         );
@@ -472,53 +489,42 @@ extern "C" void init_adrenotools_driver() {
     }
 
     if (!handle && (driver_type == "turnip" || driver_type == "custom")) {
-        LOGI("init_adrenotools_driver: Attempting to load integrated Turnip driver (vulkan.ad07XX.so)...");
-        handle = adrenotools_open_libvulkan(
-            RTLD_NOW,
-            ADRENOTOOLS_DRIVER_CUSTOM,
-            internal_dir,
-            hook_dir.c_str(),
-            turnip_dir.string().c_str(),
-            "vulkan.ad07XX.so",
-            nullptr,
-            nullptr
-        );
-        if (!handle) {
+        LOGI("init_adrenotools_driver: Attempting to load integrated Turnip driver...");
+        const char* driver_libs[] = { "vulkan.ad07XX.so", "vulkan.ad07xx.so", "vulkan.ad06XX.so", "vulkan.ad06xx.so" };
+        for (const char* dlib : driver_libs) {
+            handle = adrenotools_open_libvulkan(
+                RTLD_NOW,
+                ADRENOTOOLS_DRIVER_CUSTOM,
+                internal_dir,
+                hook_dir.c_str(),
+                turnip_dir.string().c_str(),
+                dlib,
+                nullptr,
+                nullptr
+            );
+            if (handle) break;
             handle = adrenotools_open_libvulkan(
                 RTLD_NOW,
                 ADRENOTOOLS_DRIVER_CUSTOM,
                 internal_dir,
                 hook_dir.c_str(),
                 drivers_dir.string().c_str(),
-                "vulkan.ad07XX.so",
+                dlib,
                 nullptr,
                 nullptr
             );
+            if (handle) break;
         }
+
         if (handle) {
             LOGI("init_adrenotools_driver: Turnip Mesa driver loaded successfully!");
         } else {
-            LOGW("init_adrenotools_driver: Turnip failed to load, falling back to system driver...");
+            LOGW("init_adrenotools_driver: Turnip failed to load, falling back to system default driver...");
         }
     }
 
     if (!handle) {
-        LOGI("init_adrenotools_driver: Loading system default driver with AdrenoTools hooks...");
-        handle = adrenotools_open_libvulkan(
-            RTLD_NOW,
-            0,
-            internal_dir,
-            hook_dir.c_str(),
-            nullptr,
-            nullptr,
-            nullptr,
-            nullptr
-        );
-        if (handle) {
-            LOGI("init_adrenotools_driver: System Vulkan driver initialized with hooks!");
-        } else {
-            LOGW("init_adrenotools_driver: System Vulkan driver without hooks will be used.");
-        }
+        LOGI("init_adrenotools_driver: Using system default Vulkan driver without AdrenoTools hooks.");
     }
 #else
     LOGI("init_adrenotools_driver: AdrenoTools not available for this ABI (stub)");

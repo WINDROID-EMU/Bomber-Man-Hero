@@ -100,9 +100,49 @@ class MainActivity : SDLActivity() {
 
         checkAndRequestStoragePermissions()
         ConfigManager.load()
+        extractTurnipDriverIfNeeded()
 
         setupControllerOverlay()
         ensureTouchControllerAttached()
+    }
+
+    private fun extractTurnipDriverIfNeeded() {
+        try {
+            val turnipDir = File(filesDir, "drivers/turnip")
+            if (!turnipDir.exists()) {
+                turnipDir.mkdirs()
+            }
+            val turnipSo = File(turnipDir, "vulkan.ad07XX.so")
+            val turnipMeta = File(turnipDir, "meta.json")
+
+            if (!turnipSo.exists() || turnipSo.length() == 0L) {
+                assets.open("drivers/vulkan.ad07XX.so").use { input ->
+                    turnipSo.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                turnipSo.setExecutable(true)
+                Log.i("BMHMain", "Extracted turnip vulkan.ad07XX.so to ${turnipSo.absolutePath}")
+            }
+
+            if (!turnipMeta.exists() || turnipMeta.length() == 0L) {
+                assets.open("drivers/meta.json").use { input ->
+                    turnipMeta.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                Log.i("BMHMain", "Extracted turnip meta.json to ${turnipMeta.absolutePath}")
+            }
+
+            val driversDir = File(filesDir, "drivers")
+            val driverSoRoot = File(driversDir, "vulkan.ad07XX.so")
+            if (!driverSoRoot.exists() || driverSoRoot.length() == 0L) {
+                turnipSo.copyTo(driverSoRoot, overwrite = true)
+                driverSoRoot.setExecutable(true)
+            }
+        } catch (e: Exception) {
+            Log.w("BMHMain", "Could not extract turnip driver from assets: ${e.message}")
+        }
     }
 
     override fun onResume() {

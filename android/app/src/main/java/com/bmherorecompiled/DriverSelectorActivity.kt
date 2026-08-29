@@ -193,7 +193,7 @@ class DriverSelectorActivity : Activity() {
             // Set executable permissions
             driverFile.setExecutable(true)
             
-            customDriverPath = driverFile.absolutePath
+            customDriverPath = driverDir.absolutePath
             customDriverName = "vulkan.ad07XX.so"
             updateDriverInfo()
             Toast.makeText(this, "Turnip driver extracted and selected", Toast.LENGTH_SHORT).show()
