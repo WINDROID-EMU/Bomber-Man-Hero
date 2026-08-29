@@ -1,6 +1,12 @@
 [submodule "BMHeroSyms"]
 	path = BMHeroSyms
 	url = https://github.com/RevoSucks/BMHeroSyms.git
+[submodule "android/SDL2"]
+	path = android/SDL2
+	url = https://github.com/libsdl-org/SDL.git
+[submodule "android/freetype"]
+	path = android/freetype
+	url = https://gitlab.freedesktop.org/freetype/freetype.git
 [submodule "lib/N64ModernRuntime"]
 	path = lib/N64ModernRuntime
 	url = https://github.com/linkzenic/N64ModernRuntime.git
@@ -13,4 +19,3 @@
 [submodule "lib/rt64"]
 	path = lib/rt64
 	url = https://github.com/linkzenic/rt64.git
-
