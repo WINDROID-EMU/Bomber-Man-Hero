@@ -1,0 +1,2180 @@
+name: Bomberman Hero (US)
+basename: bmhero
+sha1: a36364b7e59351f7551ab351cb3b41ebc4be285b
+options:
+  compiler: IDO
+  symbol_addrs_path: tools/symbol_addrs.txt
+  target_path: baserom.z64
+  basename: bmhero
+  base_path: .
+  ld_script_path: bmhero.ld
+  platform: n64
+  hasm_in_src_path: True
+  ld_legacy_generation: true
+  detect_redundant_function_end: true
+  gfx_ucode: f3dex
+segments:
+  - name: header
+    type: header
+    start: 0x00
+    vram: 0
+    subsegments:
+    - [0x0000, header, header]
+  - name: boot
+    type: code
+    start: 0x0040
+    vram: 0xA4000040
+    exclusive_ram_id: boot
+    subsegments:
+    - [0x0040, asm, boot]
+    - [0x0B70, bin, bootcode_font]
+  - name: boot_code
+    type: code
+    bss_size: 0xE6E0
+    start: 0x1000
+    vram: 0x80000400
+    subsegments:
+    - [0x1000,  hasm, entry] # bootloader
+    - [0x1050,  c, boot/main] # main
+    - [0x3490,  c, boot/3490]
+    - [0x38D0,  c, boot/38D0]
+    - [0xDD20,  c, boot/nusys/mus/audio]
+    - [0xEE20,  c, boot/mem] # Host functions for libmalloc
+    - [0xEFE0,  c, boot/parse_args]
+    - [0xF280,  c, boot/F280]
+    - [0x10AB0, c, boot/10AB0]
+    - [0x12AF0, c, boot/12AF0]
+    - [0x15700, c, boot/LZSS] # LZSS decompression routines
+    - [0x15A80, c, boot/math_util]
+    - [0x17930, c, boot/17930]
+    - [0x1FAB0, c, boot/cont_pak]
+    - [0x21E10, c, boot/21E10]
+    - [0x25810, c, boot/25810]
+    - [0x26CE0, c, boot/26CE0]
+    - [0x2BF00, c, boot/2BF00]
+    
+    # Enhancement file for IS Print functionality to make documenting the project easier. This
+    # was not part of the original game and was added to make documenting the project easier.
+    - [0x30390, c, boot/isprint] # have to use the next file's addr or it wont split 2BF00.
+
+    # while this file is definitely libultra's synstartvoiceparam, it seems
+    # to be a modified one, and it starts way earlier than libultra's starting
+    # point later. The source for this file is provided on the N64 SDK OS CD,
+    # so the developers may have actually modified the source for this file, thus
+    # moving this file into the "game" source earlier than the libultra source.
+    - [0x30390, c, libultra/audio/synstartvoiceparam]
+    
+    # libmalloc.a from GNU C library. Obtained from https://ftp.gnu.org/old-gnu/malloc.tar.gz
+    # This library was distributed separately.
+    # 
+    # Please see LICENSE_NOTICE.md for more info. They probably just linked
+    # the whole libmalloc.a file in their linker setup, but we actually dont
+    # have that setup, so we have to do it like this per file for the ones that
+    # actually got linked in.
+    - [0x30480, c, boot/malloc/malloc]
+    - [0x30FF0, c, boot/malloc/free]
+    - [0x31660, c, boot/malloc/morecore]
+    - [0x316A0, c, boot/malloc/realloc]
+
+    - [0x319C0, bin, noppad_319C0] # nop padding to align to libultra area.
+
+    - [0x31A20, c, libultra/os/initialize]
+    - [0x31CB0, c, libultra/os/createthread]
+    - [0x31E00, c, libultra/os/startthread]
+    - [0x31F50, c, libultra/io/pimgr]
+    - [0x320E0, c, libultra/os/setthreadpri]
+    - [0x321C0, hasm, libultra/os/writebackdcache]
+    - [0x32240, hasm, libultra/os/invalicache]
+    - [0x322C0, hasm, libultra/os/invalidcache]
+    - [0x32370, c, libultra/io/pidma]
+    - [0x32480, c, libultra/os/recvmesg]
+    - [0x325C0, c, libultra/os/createmesgqueue]
+    - [0x325F0, c, libultra/io/visetyscale]
+    - [0x32650, c, libultra/io/viblack]
+    - [0x326C0, c, libultra/io/vimgr]
+    - [0x32A20, c, libultra/io/visetmode]
+    - [0x32A90, c, libultra/os/seteventmesg]
+    - [0x32B00, c, libultra/io/visetevent]
+    - [0x32B70, hasm, libultra/os/setintmask]
+    - [0x32C10, c, libultra/os/sendmesg]
+    - [0x32D60, c, libultra/io/sptaskyielded]
+    - [0x32DE0, c, libultra/io/vigetcurrframebuf]
+    - [0x32E20, c, libultra/io/vigetnextframebuf]
+    - [0x32E60, c, libultra/io/viswapbuf]
+    - [0x32EB0, hasm, libultra/os/writebackdcacheall]
+    - [0x32EE0, c, libultra/io/sptask]
+    - [0x331D0, c, libultra/io/dpsetnextbuf]
+    - [0x33280, c, libultra/io/sptaskyield]
+    - [0x332A0, c, libultra/audio/heapinit]
+    - [0x332E0, c, libultra/audio/csplayer]
+    - [0x34510, c, libultra/audio/bnkf]
+    - [0x34760, c, libultra/audio/cseq]
+    - [0x35220, c, libultra/audio/seqpsetbank]
+    - [0x35260, c, libultra/audio/seqpsetseq]
+    - [0x352A0, c, libultra/audio/seqpsetvol]
+    - [0x352E0, c, libultra/audio/seqpplay]
+    - [0x35310, c, libultra/audio/seqpgetstate]
+    - [0x35320, c, libultra/audio/seqpstop]
+    - [0x35350, c, libultra/audio/seqpdelete]
+    - [0x35380, c, libultra/audio/seqpsettempo]
+    - [0x353F0, c, libultra/audio/cspgettempo]
+    - [0x35430, c, libultra/audio/seqpgetprogram]
+    - [0x354C0, c, libultra/audio/seqpgetchlvol]
+    - [0x354E0, c, libultra/audio/seqpgetpan]
+    - [0x35500, c, libultra/audio/seqpgetfxmix]
+    - [0x35520, c, libultra/audio/cents2ratio]
+    - [0x35570, c, libultra/gu/sinf]
+    - [0x35730, c, libultra/audio/sndplayer]
+    - [0x35E40, c, libultra/audio/sndpallocate]
+    - [0x35EE0, c, libultra/audio/sndpsetpriority]
+    - [0x35F10, c, libultra/audio/sndpsetsound]
+    - [0x35F30, c, libultra/audio/sndpplay]
+    - [0x35FA0, c, libultra/audio/sndpsetpitch]
+    - [0x36000, c, libultra/audio/sndpsetvol]
+    - [0x36060, c, libultra/audio/sndpsetfxmix]
+    - [0x360C0, c, libultra/audio/sndpsetpan]
+    - [0x36120, c, libultra/audio/sndpgetsound]
+    - [0x36130, c, libultra/audio/sndpgetstate]
+    - [0x36150, c, libultra/audio/sndpdeallocate]
+    - [0x361A0, c, libultra/audio/sndpstop]
+    - [0x361F0, c, libultra/gu/random]
+    - [0x36220, c, libultra/audio/sndpdelete]
+    - [0x36250, c, libultra/io/aisetfreq]
+    - [0x363B0, c, libultra/audio/sl]
+    - [0x36470, c, libultra/audio/heapalloc]
+    - [0x364D0, c, libultra/os/virtualtophysical]
+    - [0x36550, c, libultra/io/aisetnextbuf]
+    - [0x36600, c, libultra/io/aigetlen]
+    - [0x36610, c, libultra/audio/synthesizer]
+    - [0x36CF0, c, libultra/gu/mtxutil]
+    - [0x36F60, c, libultra/gu/mtxcatf]
+    - [0x37170, c, libultra/gu/cosf]
+    - [0x372E0, hasm, libultra/gu/sqrtf]
+    - [0x372F0, c, libultra/libc/llcvt]
+    - [0x37500, c, libultra/libc/ll]
+    - [0x377C0, c, libultra/libc/sprintf]
+    - [0x37840, c, libultra/gu/perspective]
+    - [0x37AD0, c, libultra/gu/lookat]
+    - [0x37E00, c, libultra/gu/translate]
+    - [0x37EA0, c, libultra/gu/rotate]
+    - [0x38090, c, libultra/gu/scale]
+    - [0x38130, c, libultra/io/visetspecial]
+    - [0x382F0, c, libultra/io/controller]
+    - [0x386B0, c, libultra/io/contreaddata]
+    - [0x38910, c, libultra/io/contquery]
+    - [0x389C0, c, libultra/io/pfsinitpak]
+    - [0x38C30, c, libultra/io/pfsisplug]
+    - [0x38FA0, c, libultra/io/pfsfilestate]
+    - [0x39290, c, libultra/io/pfsfreeblocks]
+    - [0x393E0, c, libultra/io/pfsnumfiles]
+    - [0x39530, c, libultra/io/pfssearchfile]
+    - [0x396F0, c, libultra/io/pfsallocatefile]
+    - [0x39EA0, c, libultra/io/pfsreadwritefile]
+    - [0x3A3A0, c, libultra/io/pfsdeletefile]
+    - [0x3A9B0, c, libultra/io/conteepprobe]
+    - [0x3AA20, c, libultra/io/conteeplongwrite]
+    - [0x3AB60, c, libultra/io/conteeplongread]
+    - [0x3ACA0, c, libultra/io/motor]
+    - [0x3B440, c, libultra/libc/string]
+    - [0x3B4E0, hasm, libultra/os/setsr]
+    - [0x3B4F0, hasm, libultra/os/getsr]
+    - [0x3B500, hasm, libultra/os/setfpccsr]
+    - [0x3B510, c, libultra/io/sirawread]
+    - [0x3B560, c, libultra/io/sirawwrite]
+    - [0x3B5B0, hasm, libultra/os/exceptasm]
+    - [0x3BEC0, hasm, libultra/os/maptlbrdb]
+    - [0x3BF20, c, libultra/io/pirawread]
+    - [0x3BF80, hasm, libultra/libc/bzero]
+    - [0x3C020, hasm, libultra/os/interrupt]
+    - [0x3C060, c, libultra/os/thread]
+    - [0x3C0A0, c, libultra/io/cartrominit]
+    - [0x3C190, c, libultra/io/leodiskinit]
+    - [0x3C290, c, libultra/io/piacs]
+    - [0x3C350, c, libultra/os/getthreadpri]
+    - [0x3C370, c, libultra/io/pirawdma]
+    - [0x3C450, c, libultra/io/epirawdma]
+    - [0x3C680, c, libultra/io/devmgr]
+    - [0x3CB10, c, libultra/os/jammesg]
+    - [0x3CC60, c, libultra/io/pigetcmdq]
+    - [0x3CC90, c, libultra/io/vi]
+    - [0x3CDD0, c, libultra/os/timerintr]
+    - [0x3D1D0, c, libultra/io/vigetcurrcontext]
+    - [0x3D1E0, c, libultra/io/viswapcontext]
+    - [0x3D540, hasm, libultra/os/getcount]
+    - [0x3D550, c, libultra/io/spgetstat]
+    - [0x3D560, hasm, libultra/libc/bcopy]
+    - [0x3D870, c, libultra/io/spsetstat]
+    - [0x3D880, c, libultra/io/spsetpc]
+    - [0x3D8C0, c, libultra/io/sprawdma]
+    - [0x3D950, c, libultra/io/sp]
+    - [0x3D980, c, libultra/io/dp]
+    - [0x3D9B0, c, libultra/audio/seqplayer]
+    - [0x3F2F0, c, libultra/audio/event]
+    - [0x3F630, c, libultra/audio/synaddplayer]
+    - [0x3F680, c, libultra/audio/synstopvoice]
+    - [0x3F700, c, libultra/audio/synfreevoice]
+    - [0x3F7B0, c, libultra/audio/synsetvol]
+    - [0x3F850, c, libultra/audio/synsetpitch]
+    - [0x3F8E0, c, libultra/audio/synallocvoice]
+    - [0x3FB10, c, libultra/audio/synsetpan]
+    - [0x3FBA0, c, libultra/audio/synsetfxmix]
+    - [0x3FC40, c, libultra/audio/synremoveplayer]
+    - [0x3FCE0, c, libultra/audio/synstartvoice]
+    - [0x3FD70, c, libultra/audio/syndelete]
+    - [0x3FD80, hasm, libultra/os/probetlb]
+    - [0x3FE40, c, libultra/io/ai]
+    - [0x3FE70, c, libultra/audio/drvrnew]
+    - [0x40610, c, libultra/audio/synallocfx]
+    - [0x406B0, c, libultra/audio/mainbus]
+    - [0x40800, c, libultra/audio/load]
+    - [0x41350, c, libultra/audio/resample]
+    - [0x41650, c, libultra/audio/env]
+    - [0x422B0, c, libultra/audio/auxbus]
+    - [0x423C0, c, libultra/audio/save]
+    - [0x42480, c, libultra/libc/xprintf]
+    - [0x43140, c, libultra/gu/normalize]
+    - [0x431D0, c, libultra/os/gettime]
+    - [0x43260, c, libultra/os/settimer]
+    - [0x43340, c, libultra/io/sirawdma]
+    - [0x433F0, c, libultra/io/siacs]
+    - [0x434B0, c, libultra/io/pfsgetstatus]
+    - [0x435C0, c, libultra/io/contpfs]
+    - [0x44320, c, libultra/io/contramread]
+    - [0x446B0, c, libultra/io/pfschecker]
+    - [0x45110, c, libultra/io/contramwrite]
+    - [0x45490, c, libultra/io/conteepwrite]
+    - [0x45970, c, libultra/io/conteepread]
+    - [0x45C70, c, libultra/io/crc]
+    - [0x45DF0, c, libultra/io/si]
+    - [0x45E20, c, libultra/io/leointerrupt]
+    - [0x466A0, c, libultra/os/destroythread]
+    - [0x467A0, c, libultra/os/resetglobalintmask]
+    - [0x46800, c, libultra/io/epirawwrite]
+    - [0x46850, c, libultra/io/epirawread]
+    - [0x468A0, c, libultra/os/setglobalintmask]
+    - [0x468F0, c, libultra/os/yieldthread]
+    - [0x46940, hasm, libultra/os/setcompare]
+    - [0x46950, c, libultra/audio/seq]
+    - [0x46F70, c, libultra/audio/synsetpriority]
+    - [0x46F80, c, libultra/audio/copy]
+    - [0x47000, c, libultra/audio/filter]
+    - [0x47020, c, libultra/audio/reverb]
+    - [0x47C70, c, libultra/libc/xlitob]
+    - [0x47F10, c, libultra/libc/xldtob]
+    - [0x489D0, c, libultra/libc/ldiv]
+
+    - [0x48B60, data] # data and rodata
+    - [0x494F0, bin, gspF3DEX_fifoTextStart_2] # some RSP stuff around 0x494F0. seems to be the latter part of gspF3DEX_fifoTextStart
+    - [0x4A060, .data, boot/nusys/mus/asp_data]
+    - [0x4A060, .data, boot/main]
+    - [0x4AEA0, .data, boot/38D0]
+    - [0x4AF70, .data, boot/mem]
+    - [0x4AF80, .data, boot/parse_args]
+    - [0x4AF90, .data, boot/F280]
+    - [0x4AFA0, .data, boot/10AB0]
+    - [0x4AFD0, .data, boot/12AF0]
+    - [0x4B000, .data, boot/math_util]
+    - [0x4B190, .data, boot/17930]
+    - [0x4B1F0, .data, boot/cont_pak]
+    - [0x4B240, .data, boot/25810]
+    - [0x4B260, .data, boot/2BF00]
+    - [0x4B350, .data, boot/malloc/malloc]
+    - [0x4B360, .data, boot/malloc/free]
+    - [0x4B370, .data, libultra/io/vitbl]
+    - [0x4C090, .data, libultra/os/initialize]
+    - [0x4C0B0, .data, libultra/io/pimgr]
+    - [0x4C0E0, .data, libultra/io/vimgr]
+    - [0x4C100, .data, libultra/gu/random]
+    - [0x4C110, .data, libultra/audio/sl]
+    - [0x4C120, .data, libultra/io/aisetnextbuf]
+    - [0x4C130, .data, libultra/io/controller]
+    - [0x4C140, .data, libultra/io/motor]
+    - [0x4C150, data, __osHwIntTable] # exceptasm, but it would require declaring .data from an .s file, which is auto extracted, which means i cant move this yet.
+    - [0x4C170, .data, libultra/os/thread]
+    - [0x4C190, .data, libultra/io/piacs]
+    - [0x4C1A0, .data, libultra/io/vi]
+    - [0x4C210, .data, libultra/os/timerintr]
+    - [0x4C220, .data, libultra/audio/drvrnew]
+    - [0x4C3B0, .data, libultra/audio/env]
+    - [0x4C4F0, .data, libultra/libc/xprintf]
+    - [0x4C540, .data, libultra/io/siacs]
+    - [0x4C550, .data, libultra/vimodes/vimodepallan1]
+    - [0x4C5A0, .data, libultra/vimodes/vimodempallan1]
+    - [0x4C5F0, .data, libultra/vimodes/vimodentsclan1]
+    - [0x4C640, .data, libultra/libc/xlitob]
+    - [0x4C670, .rodata, boot/main]
+    - [0x4C6A0, .rodata, boot/3490]
+    - [0x4C6C0, .rodata, boot/38D0]
+    - [0x4C7B0, .rodata, boot/mem]
+    - [0x4C7F0, .rodata, boot/10AB0]
+    - [0x4C810, .rodata, boot/math_util]
+    - [0x4C820, .rodata, boot/17930]
+    - [0x4C860, .rodata, boot/cont_pak]
+    - [0x4C940, .rodata, boot/21E10]
+    - [0x4C9B0, .rodata, boot/26CE0]
+    - [0x4CA40, .rodata, boot/2BF00]
+    - [0x4CC10, rodata, libultra/os/setintmask]
+    - [0x4CC90, .rodata, libultra/audio/csplayer]
+    - [0x4CED0, .rodata, libultra/audio/cseq]
+    - [0x4CEE0, .rodata, libultra/audio/cents2ratio]
+    - [0x4CEF0, .rodata, libultra/gu/sinf]
+    - [0x4CF40, .rodata, libultra/audio/sndplayer]
+    - [0x4CF80, .rodata, libultra/audio/synthesizer]
+    - [0x4CF90, .rodata, libultra/gu/cosf]
+    - [0x4CFE0, .rodata, libultra/libc/llcvt]
+    - [0x4CFF0, .rodata, libultra/gu/perspective]
+    - [0x4D000, .rodata, libultra/gu/rotate]
+    - [0x4D010, rodata, libultra/os/exceptasm]
+    - [0x4D060, .rodata, libultra/io/devmgr]
+    - [0x4D080, .rodata, libultra/audio/seqplayer]
+    - [0x4D2C0, rodata, libultra/gu/libm_vals]
+    - [0x4D2D0, .rodata, libultra/audio/drvrnew]
+    - [0x4D2F0, .rodata, libultra/audio/resample]
+    - [0x4D330, .rodata, libultra/audio/env]
+    - [0x4D390, .rodata, libultra/libc/xprintf]
+    - [0x4D490, .rodata, libultra/audio/seq]
+    - [0x4D4A0, .rodata, libultra/audio/reverb]
+    - [0x4D4D0, .rodata, libultra/libc/xldtob]
+    - [0x4D530, bin, gspF3DEX_fifoTextStart] # F3DEX2.. but only part of it? Modified F3DEX2?
+    - [0x4DD30, bin]
+    - [0x4DFF0]
+
+    # bss begins here I guess
+    - {start: 0x4DFF0, vram: 0x8004D3F0, type: .bss, name: boot/main}
+    - {start: 0x4DFF0, vram: 0x80052D40, type: .bss, name: boot/38D0}
+    - {start: 0x4DFF0, vram: 0x80053160, type: .bss, name: boot/nusys/mus/audio}
+    - {start: 0x4DFF0, vram: 0x800557E0, type: .bss, name: boot/F280}
+    - {start: 0x4DFF0, vram: 0x80055D50, type:  bss, name: boot_bss_pad_2}
+
+    - {start: 0x4DFF0, vram: 0x80057450, type:  bss, name: boot_bss_pad_3}
+    - {start: 0x4DFF0, vram: 0x80057660, type:  .bss, name: boot/2BF00} #boot_bss_pad_4
+    - {start: 0x4DFF0, vram: 0x80057690, type:  bss, name: boot_bss_pad_4}
+    - {start: 0x4DFF0, vram: 0x80057EC0, type: .bss, name: boot/malloc/malloc}
+    - {start: 0x4DFF0, vram: 0x80057F60, type: .bss, name: boot/malloc/free}
+    - {start: 0x4DFF0, vram: 0x80057F70, type: .bss, name: boot/malloc/realloc}
+    - {start: 0x4DFF0, vram: 0x80057F80, type: .bss, name: libultra/os/initialize}
+    - {start: 0x4DFF0, vram: 0x80057F90, type: .bss, name: libultra/io/pimgr}
+    - {start: 0x4DFF0, vram: 0x80059160, type: .bss, name: libultra/io/vimgr}
+    - {start: 0x4DFF0, vram: 0x8005A380, type: .bss, name: libultra/os/seteventmesg}
+    - {start: 0x4DFF0, vram: 0x8005A400, type: .bss, name: libultra/io/sptask}
+    - {start: 0x4DFF0, vram: 0x8005A440, type: .bss, name: libultra/gu/rotate}
+    - {start: 0x4DFF0, vram: 0x8005A450, type: .bss, name: libultra/io/controller}
+    - {start: 0x4DFF0, vram: 0x8005A4E0, type: .bss, name: libultra/io/pfsisplug}
+    - {start: 0x4DFF0, vram: 0x8005A520, type: .bss, name: libultra/io/motor}
+    - {start: 0x4DFF0, vram: 0x8005A760, type: .bss, name: libultra/io/cartrominit}
+    - {start: 0x4DFF0, vram: 0x8005A7E0, type: .bss, name: libultra/io/leodiskinit}
+    - {start: 0x4DFF0, vram: 0x8005A860, type: .bss, name: libultra/io/piacs}
+    - {start: 0x4DFF0, vram: 0x8005A880, type: .bss, name: libultra/os/timerintr}
+    - {start: 0x4DFF0, vram: 0x8005A8C0, type: .bss, name: libultra/io/siacs}
+    - {start: 0x4DFF0, vram: 0x8005A8E0, type: .bss, name: libultra/io/conteepread}
+    - {start: 0x4DFF0, vram: 0x8005A920, type: bss, name: boot_bss_pad_5}
+  - [0x4DFF0]
+
+  - name: game
+    type: code
+    bss_size: 0x432F0
+    start: 0x4DFF0
+    vram: 0x8005BAD0
+    subsegments:
+    - [0x4DFF0, c, code/4DFF0]
+    - [0x50BC0, c, code/debug_utils]
+    - [0x520E0, c, code/520E0]
+    - [0x56400, c, code/56400]
+    - [0x56800, c, code/56800]
+    - [0x5D4D0, c, code/5D4D0]
+    - [0x5E8F0, c, code/skybox]
+    - [0x60680, c, code/60680]
+    - [0x63F90, c, code/63F90]
+    - [0x69AA0, c, code/69AA0]
+    - [0x70C40, c, code/70C40]
+    - [0x71AA0, c, code/71AA0]
+    - [0x76640, c, code/76640]
+    - [0x7B0A0, c, code/7B0A0]
+    - [0x7E1E0, c, code/7E1E0]
+    - [0x86D20, c, code/86D20]
+    - [0x9B110, c, code/9B110]
+    - [0xA7AD0, c, code/A7AD0]
+    - [0xB27B0, c, code/B27B0]
+    - [0xB38A0, c, code/B38A0]
+    - [0xBE560, c, code/BE560]
+    - [0xC4470, c, code/C4470]
+    - [0xCAFF0, c, code/CAFF0]
+    - [0xCD240, c, code/CD240]
+    - [0xED210, c, code/ED210]
+    - [0xEFF30, c, code/EFF30]
+    - [0xF2A40, hasm, ../src/unk_F2A40_data]
+    - [auto, .data, ../src/unk_F2A40_data]
+    - [0xF4DE0, .rodata, code/4DFF0]
+    - [0xF4E40, rodata]
+    - [0xF5ED0, .rodata, code/debug_utils]
+    - [0xF5EF0, rodata]
+    - [0xF5FE0, rodata]
+    - [0xF6220, rodata]
+    - [0xF74B0, .rodata, code/56800]
+    - [0xF74C0, .rodata, code/5D4D0]
+    - [0xF7700, hasm, ../src/unk_rom_table_F7700]
+    - [auto, .rodata, ../src/unk_rom_table_F7700] # might be part of F77F0, but split it out so I can label the ROM table.
+    - [0xF77F0, rodata]
+    - [0xF7940, rodata]
+    - [0xF7B20, .rodata, code/63F90]
+    - [0xF81B0, rodata] 
+    - [0xF92C0, hasm, ../src/level_table]
+    - [auto, .rodata, ../src/level_table]
+    - [0xFAA60, rodata]
+    - [0xFDC20, rodata]
+    - [0xFE460, rodata]
+    - [0xFEEC0, .rodata, code/69AA0]
+    - [0xFF020, rodata]
+    - [0xFF030, rodata]
+    - [0xFF0F0, hasm, ../src/unk_FF0F0_rodata]
+    - [auto, .rodata, ../src/unk_FF0F0_rodata]
+    - [0xFF1C0, .rodata, code/76640]
+    - [0xFF2A0, rodata]
+    - [0xFF2B0, .rodata, code/7B0A0]
+    - [0xFF3F0, .rodata, code/7E1E0]
+    - [0xFF500, rodata]
+    - [0x1038B0, rodata]
+    - [0x1038E0, rodata]
+    - [0x103910, rodata]
+    - [0x103940, rodata]
+    - [0x103970, rodata]
+    - [0x1039A0, rodata]
+    - [0x1039D0, rodata]
+    - [0x103A00, rodata]
+    - [0x103A30, rodata]
+    - [0x103A60, rodata]
+    - [0x103A90, rodata]
+    - [0x103AC0, rodata]
+    - [0x103AF0, rodata]
+    - [0x103B20, rodata]
+    - [0x103B50, rodata]
+    - [0x103B80, rodata]
+    - [0x103BB0, rodata]
+    - [0x103BE0, rodata]
+    - [0x103C10, rodata]
+    - [0x103C40, rodata]
+    - [0x103C70, rodata]
+    - [0x103CA0, rodata]
+    - [0x103CD0, rodata]
+    - [0x103D00, rodata]
+    - [0x103D30, rodata]
+    - [0x103D70, rodata]
+    - [0x105920, rodata]
+    - [0x105A40, rodata]
+    - [0x105B00, rodata]
+    - [0x105BC0, rodata]
+    - [0x105F20, rodata]
+    - [0x106640, rodata]
+    - [0x106A00, rodata]
+    - [0x106D10, rodata]
+    - [0x106D40, rodata]
+    - [0x106DF0, rodata]
+    - [0x106E50, rodata]
+    - [0x106F40, .rodata, code/9B110]
+    - [0x1070F0, .rodata, code/A7AD0]
+    - [0x107210, .rodata, code/B27B0]
+    - [0x107230, rodata]
+    - [0x107250, .rodata, code/B38A0]
+    - [0x107340, rodata]
+    - [0x107350, rodata]
+    - [0x107360, rodata]
+    - [0x107380, rodata]
+    - [0x107500, .rodata, code/BE560]
+    - [0x1075B0, .rodata, code/C4470]
+    - [0x107630, .rodata, code/CAFF0]
+    - [0x1076A0, rodata]
+    - [0x107830, rodata]
+    - [0x107C00, rodata]
+    - [0x107C10, rodata]
+    - [0x107C60, .rodata, code/ED210]
+    - [0x107D20, rodata]
+    - [0x109540, rodata]
+    - [0x109AF0, rodata]
+    - [0x109FC0, rodata]
+    - [0x10A510, rodata]
+    - [0x10DE00, hasm, ../src/unk_10DE00_rodata]
+    - [auto, .rodata, ../src/unk_10DE00_rodata]
+    - [0x115230, hasm, ../src/file_table] # need to do this to get splat to not see it as a C object.
+    - [auto, .rodata, ../src/file_table] # right now we have to do this; IDO refuses to put it in .rodata. TODO: Find a workaround?
+    - [0x1172B0, rodata]
+    - [0x126730, rodata]
+    - [0x126750, .rodata, code/EFF30]
+    - [0x126C50, rodata]
+    - [0x126CB0]
+    
+    # code bss
+    - {start: 0x126CB0, vram: 0x80134790, type:  bss, name: game_bss_pad_0}
+    - {start: 0x126CB0, vram: 0x80134BF0, type: .bss, name: code/7B0A0}
+    - {start: 0x126CB0, vram: 0x80134FB0, type:  bss, name: game_bss_pad_1}
+  - [0x126CB0]
+
+    # these are probably other sections but we dont have them ID'd yet.
+  - name: unk_bin_0
+    type: code
+    bss_size: 0x0
+    start: 0x126CB0
+    vram: 0x0 # idk
+    subsegments:
+    - [0x126CB0, bin]
+
+  - name: unk_bin_0_2
+    type: .data
+    bss_size: 0x0
+    start: 0x127FF0
+    vram: 0x8024C000
+    data_only: True
+    subsegments:
+    - [0x127FF0, c, unk_bin_0_2] # compile the whole file
+    # do not emit or declare, just extract
+    - [0x127FF0, ia4, unk_127FF0.ia4, 32, 32]
+    - [0x1281F0, data] # type:u32
+    - [0x1282C0, ia4, unk_1282C0.ia4, 32, 32]
+    - [0x1284C0, data] # type:u32
+    - [0x128590, gfx]
+    - [0x128620, gfx]
+    - [0x1286B8, gfx]
+    - [0x128750, gfx]
+    - [0x128758, ia8, unk_128758.ia8, 32, 32]
+    - [0x128B58, data] # type:u32
+    - [0x128B68, gfx]
+    - [0x128C40, gfx]
+    - [0x128C58, gfx]
+    - [0x128CA0, gfx]
+
+  - name: code_extra_0
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x128D20
+    vram: 0x80280000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x128D20, c, overlays/128D20/128D20]
+    - [0x133DA0, data]
+    - [0x134370, rodata]
+
+  - name: code_extra_1
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x134440
+    vram: 0x80280000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x134440, c, overlays/134440/134440]
+    - [0x138160, data]
+
+  - name: code_extra_2
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x138360
+    vram: 0x80280000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x138360, c, overlays/138360/138360]
+    - [0x13AAE0, data]
+
+  - name: code_extra_3
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x13AC20
+    vram: 0x80280000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x13AC20, c, overlays/13AC20/13AC20]
+    - [0x13C1B0, .data, overlays/13AC20/13AC20]
+    - [0x13C490, .rodata, overlays/13AC20/13AC20]
+
+  - name: code_extra_4
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x13C4C0
+    vram: 0x80280000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x13C4C0, c, overlays/13C4C0/13C4C0]
+    - [0x13D9D0, data]
+
+  - name: code_extra_5
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x13DAD0
+    vram: 0x80280000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x13DAD0, c, overlays/13DAD0/13DAD0]
+    - [0x144100, data]
+
+  - name: code_extra_6
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x144420
+    vram: 0x80280000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x144420, c, overlays/144420/144420]
+    - [0x147980, data]
+
+  - name: unk_bin_1
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x147BB0
+    vram: 0x80320000
+    exclusive_ram_id: overlay
+    subsegments:
+    - [0x147BB0, hasm, ../src/unk_bin_1]
+    - [auto, .data, ../src/unk_bin_1]
+
+  - name: unk_bin_2
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x14C540
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x14C540, c, overlays/14C540/14C540]
+    - [0x1525C0, data]
+
+  - name: unk_bin_3
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x1528A0
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x1528A0, c, overlays/1528A0/1528A0]
+    - [0x153B50, data]
+
+  - name: unk_bin_4
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x153B70
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x153B70, c, overlays/153B70/153B70]
+    - [0x156E20, data]
+
+  - name: unk_bin_5
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x156F90
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x156F90, c, overlays/156F90/156F90]
+
+  - name: unk_bin_6
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x157520
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x157520, c, overlays/157520/157520]
+
+  - name: unk_bin_7
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x157A00
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x157A00, c, overlays/157A00/157A00]
+    - [0x15A020, data]
+
+  - name: unk_bin_8
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x15A0F0
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x15A0F0, c, overlays/15A0F0/15A0F0]
+
+  - name: unk_bin_9
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x15A7D0
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x15A7D0, c, overlays/15A7D0/15A7D0]
+    - [0x15C020, data]
+
+  - name: unk_bin_10
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x15C0D0
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x15C0D0, c, overlays/15C0D0/15C0D0]
+    - [0x15EE10, data]
+
+  - name: ovl_endol
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x160560
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: endol_$VRAM
+    subsegments:
+    - [0x160560, c, overlays/160560/endol]
+    - [0x1676F0, .rodata, overlays/160560/endol]
+
+  - name: unk_bin_12
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x167950
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x167950, c, overlays/167950/167950]
+    - [0x16D440, data]
+
+  - name: unk_bin_13
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x16D650
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x16D650, c, overlays/16D650/16D650]
+    - [0x175210, data]
+
+  - name: unk_bin_14
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x175420
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x175420, c, overlays/175420/175420]
+    - [0x184BD0, data]
+
+  - name: unk_bin_15
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x184EE0
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x184EE0, c, overlays/184EE0/184EE0]
+    - [0x189810, .rodata, overlays/184EE0/184EE0]
+
+  - name: unk_bin_16
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x189940
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x189940, c, overlays/189940/189940]
+    - [0x194B90, data]
+
+  - name: ovl_bagular_1
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x194F10
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: bagular1_$VRAM
+    subsegments:
+    - [0x194F10, c, overlays/194F10/bagular_1]
+    - [0x197ED0, .data, overlays/194F10/bagular_1]
+    - [0x1980F0, .rodata, overlays/194F10/bagular_1]
+
+  - name: ovl_bagular_2
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x198140
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: bagular2_$VRAM
+    subsegments:
+    - [0x198140, c, overlays/198140/bagular_2]
+    - [0x19C550, .data, overlays/198140/bagular_2]
+    - [0x19C5C0, .rodata, overlays/198140/bagular_2]
+
+
+  - name: ovl_bagular_3
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x19C610
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: bagular3_$VRAM
+    subsegments:
+    - [0x19C610, c, overlays/19C610/bagular_3]
+    - [0x1A8730, .data, overlays/19C610/bagular_3]
+    - [0x1A8810, .rodata, overlays/19C610/bagular_3]
+
+  - name: unk_bin_20
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x1A89C0
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x1A89C0, c, overlays/1A89C0/1A89C0]
+    - [0x1ABB70, .rodata, overlays/1A89C0/1A89C0]
+
+  - name: unk_bin_21
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x1ABC60
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x1ABC60, c, overlays/1ABC60/1ABC60]
+    - [0x1AEC10, .data, overlays/1ABC60/1ABC60]
+    - [0x1AEC30, .rodata, overlays/1ABC60/1ABC60]
+
+  - name: unk_bin_22
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x1AECD0
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x1AECD0, c, overlays/1AECD0/1AECD0]
+    - [0x1B37D0, data]
+
+  - name: unk_bin_23
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x1B3930
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x1B3930, c, overlays/1B3930/1B3930]
+    - [0x1B6BA0, .data, overlays/1B3930/1B3930]
+    - [0x1B6BE0, .rodata, overlays/1B3930/1B3930]
+
+  - name: unk_bin_24
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x1B6C30
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x1B6C30, c, overlays/1B6C30/1B6C30]
+    - [0x1BC3B0, data]
+
+  - name: unk_bin_25
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x1BC4E0
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x1BC4E0, c, overlays/1BC4E0/1BC4E0]
+    - [0x1C6F90, data]
+
+  - name: unk_bin_26
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x1C73D0
+    vram: 0x8032E000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x1C73D0, bin]
+
+  - name: unk_bin_27
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x1C8320
+    vram: 0x8032E000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x1C8320, bin]
+
+  - name: unk_bin_28
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x1C90D0
+    vram: 0x8032E000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x1C90D0, bin]
+
+  - name: unk_bin_29
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x1C9940
+    vram: 0x8032E000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x1C9940, bin]
+
+  - name: unk_bin_30
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x1CA830
+    vram: 0x8032E000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x1CA830, bin]
+
+  - name: unk_bin_31
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x1CA9B0
+    vram: 0x8032E000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x1CA9B0, bin]
+
+  - name: unk_bin_32
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x1CAA50
+    vram: 0x8032E000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x1CAA50, bin]
+
+  - name: unk_bin_33
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x1CAB90
+    vram: 0x8032E000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x1CAB90, bin]
+
+  - name: unk_bin_34
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x1CBF80
+    vram: 0x8032E000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x1CBF80, bin]
+
+  - name: unk_bin_35
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x1CCCE0
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x1CCCE0, c, overlays/1CCCE0/1CCCE0]
+    - [0x1D0130, .rodata, overlays/1CCCE0/1CCCE0]
+
+  - name: unk_bin_36
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x1D01D0
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x1D01D0, c, overlays/1D01D0/1D01D0]
+    - [0x1D1710, .rodata, overlays/1D01D0/1D01D0]
+
+  - name: unk_bin_37
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x1D1720
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x1D1720, c, overlays/1D1720/1D1720]
+    - [0x1D9030, .rodata, overlays/1D1720/1D1720]
+
+  - name: unk_bin_38
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x1D9110
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x1D9110, c, overlays/1D9110/1D9110]
+    - [0x1E3E80, .rodata, overlays/1D9110/1D9110]
+
+  - name: unk_bin_39
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x1E3FF0
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x1E3FF0, c, overlays/1E3FF0/1E3FF0]
+    - [0x1E7470, data]
+
+  - name: unk_bin_40
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x1E7490
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x1E7490, c, overlays/1E7490/1E7490]
+    - [0x1ED770, data]
+
+  - name: unk_bin_41
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x1ED860
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x1ED860, c, overlays/1ED860/1ED860]
+    - [0x1EF7A0, .rodata, overlays/1ED860/1ED860]
+
+  - name: unk_bin_42
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x1EF7F0
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x1EF7F0, c, overlays/1EF7F0/1EF7F0]
+    - [0x1F04F0, data]
+
+  - name: unk_bin_43
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x1F0900
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x1F0900, c, overlays/1F0900/1F0900]
+    - [0x1F6720, data]
+
+  - name: unk_bin_44
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x1F6790
+    vram: 0x8033C000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x1F6790, c, overlays/1F6790/1F6790]
+    - [0x1F7E50, data]
+
+  - name: unk_bin_45
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x1F7E80
+    vram: 0x80338000
+    exclusive_ram_id: id9
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x1F7E80, c, overlays/1F7E80/1F7E80]
+    - [0x1F8D60, data]
+
+  - name: unk_bin_46
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x1F8D70
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x1F8D70, c, overlays/1F8D70/1F8D70]
+    - [0x1FAC40, data]
+
+  - name: unk_bin_47
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x1FACD0
+    vram: 0x8033A000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x1FACD0, c, overlays/1FACD0/1FACD0]
+    - [0x1FE6D0, data]
+
+  - name: unk_bin_48
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x1FE7A0
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x1FE7A0, c, overlays/1FE7A0/1FE7A0]
+    - [0x201BA0, .rodata, overlays/1FE7A0/1FE7A0]
+
+  - name: unk_bin_49
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x201C00
+    vram: 0x8033A000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x201C00, c, overlays/201C00/201C00]
+    - [0x205EA0, data]
+
+  - name: unk_bin_50
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x205F30
+    vram: 0x80330000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x205F30, c, overlays/205F30/205F30]
+    - [0x2064D0, data]
+
+  - name: unk_bin_51
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x20DA60
+    vram: 0x80338000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x20DA60, c, overlays/20DA60/20DA60]
+    - [0x20F560, .rodata, overlays/20DA60/20DA60]
+
+  - name: unk_bin_52
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x20F5B0
+    vram: 0x8033A000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x20F5B0, bin] # 0x8033A000 - 0x80343C40
+
+  - name: unk_bin_53
+    type: code
+    bss_size: 0x0 # dunno yet
+    start: 0x2193A0
+    vram: 0x80300000
+    exclusive_ram_id: overlay
+    symbol_name_format: $VRAM_$SEG
+    subsegments:
+    - [0x2193A0, bin] # 0x8033A000 - 0x80343C40
+
+  # Rest of ROM, future offsets to sort through. might be more
+  - [0x229650, bin]
+  - [0x229A60, bin]
+  - [0x230D50, bin]
+  - [0x38A1F0, bin] # music sequences
+  - [0x47A4E0, bin]
+  - [0x47F500, bin]
+  - [0x484360, bin]
+  - [0x487E00, bin]
+  - [0x492F60, bin]
+  - [0x499040, bin]
+  - [0x49E880, bin]
+  - [0x4A87F0, bin]
+  - [0x4B1AD0, bin]
+  - [0x4B9F60, bin]
+  - [0x4C1F80, bin]
+  - [0x4C9FD0, bin]
+  - [0x4D1EF0, bin]
+  - [0x4D9EC0, bin]
+  - [0x4E2370, bin]
+  - [0x4EA770, bin]
+  - [0x4EDE40, bin]
+  - [0x4FCD90, bin]
+  - [0x501A80, bin]
+  - [0x504CA0, bin]
+  - [0x5120F0, bin]
+  - [0x51CD80, bin]
+  - [0x5261C0, bin]
+  - [0x5310E0, bin]
+  - [0x534620, bin]
+  - [0x543380, bin]
+  - [0x54DA00, bin]
+  - [0x556380, bin]
+  - [0x562EC0, bin]
+  - [0x56E920, bin]
+  - [0x574F50, bin]
+  - [0x579360, bin]
+  - [0x585F00, bin]
+  - [0x5A22A0, bin]
+  - [0x5B88F0, bin]
+  - [0x5B9B30, bin]
+  - [0x5BFFB0, bin]
+  - [0x5C4040, bin]
+  - [0x5CD580, bin]
+  - [0x5DB5A0, bin]
+  - [0x5DBEE0, bin]
+  - [0x5DE0B0, bin]
+  - [0x5E6E70, bin]
+  - [0x5E9120, bin]
+  - [0x5F0C90, bin]
+  - [0x5F29E0, bin]
+  - [0x5F95E0, bin]
+  - [0x5FCB10, bin]
+  - [0x603530, bin]
+  - [0x610A40, bin]
+  - [0x613370, bin]
+  - [0x6165A0, bin]
+  - [0x618410, bin]
+  - [0x61A940, bin]
+  - [0x620560, bin]
+  - [0x626CF0, bin]
+  - [0x627030, bin]
+  - [0x627330, bin]
+  - [0x628770, bin]
+  - [0x628B10, bin]
+  - [0x62C280, bin]
+  - [0x62CB20, bin]
+  - [0x62D750, bin]
+  - [0x631D90, bin]
+  - [0x63CAE0, bin]
+  - [0x6407D0, bin]
+  - [0x640F90, bin]
+  - [0x6414B0, bin]
+  - [0x6419D0, bin]
+  - [0x641EC0, bin]
+  - [0x643690, bin]
+  - [0x644550, bin]
+  - [0x645370, bin]
+  - [0x6469E0, bin]
+  - [0x647D30, bin]
+  - [0x647ED0, bin]
+  - [0x6484B0, bin]
+  - [0x6489B0, bin]
+  - [0x648B30, bin]
+  - [0x649020, bin]
+  - [0x649670, bin]
+  - [0x649DD0, bin]
+  - [0x64A3E0, bin]
+  - [0x64A9E0, bin]
+  - [0x64AF80, bin]
+  - [0x64B870, bin]
+  - [0x64BE10, bin]
+  - [0x64C3C0, bin]
+  - [0x64EC60, bin]
+  - [0x652B80, bin]
+  - [0x652D40, bin]
+  - [0x6533F0, bin]
+  - [0x655440, bin]
+  - [0x6596D0, bin]
+  - [0x65A8F0, bin]
+  - [0x65B690, bin]
+  - [0x65BBB0, bin]
+  - [0x65F1F0, bin]
+  - [0x661980, bin]
+  - [0x663660, bin]
+  - [0x665C80, bin]
+  - [0x668420, bin]
+  - [0x66A8F0, bin]
+  - [0x66D140, bin]
+  - [0x66D820, bin]
+  - [0x66E190, bin]
+  - [0x66F8D0, bin]
+  - [0x671E30, bin]
+  - [0x672680, bin]
+  - [0x673940, bin]
+  - [0x675910, bin]
+  - [0x676F00, bin]
+  - [0x6787F0, bin]
+  - [0x6795D0, bin]
+  - [0x67B960, bin]
+  - [0x67C810, bin]
+  - [0x67D550, bin]
+  - [0x67E1E0, bin]
+  - [0x681160, bin]
+  - [0x681800, bin]
+  - [0x684190, bin] # 0x29E
+  - [0x6846A0, bin] # 0x29F
+  - [0x684BB0, bin]
+  - [0x6852C0, bin]
+  - [0x6859D0, bin]
+  - [0x685C50, bin]
+  - [0x685E50, bin]
+  - [0x6870C0, bin]
+  - [0x688D50, bin]
+  - [0x68B0F0, bin]
+  - [0x68C8A0, bin]
+  - [0x68DFB0, bin]
+  - [0x68E4F0, bin]
+  - [0x68E530, bin]
+  - [0x68FAD0, bin]
+  - [0x68FB10, bin]
+  - [0x68FD00, bin]
+  - [0x693C40, bin]
+  - [0x6944F0, bin]
+  - [0x694640, bin]
+  - [0x6947B0, bin]
+  - [0x69B260, bin]
+  - [0x69E030, bin]
+  - [0x69F0E0, bin]
+  - [0x6A9070, bin]
+  - [0x6A9C90, bin]
+  - [0x6AB420, bin]
+  - [0x6AB510, bin]
+  - [0x6B1670, bin]
+  - [0x6B1FF0, bin]
+  - [0x6B9560, bin]
+  - [0x6BA360, bin]
+  - [0x6C2390, bin]
+  - [0x6C3320, bin]
+  - [0x6CABF0, bin]
+  - [0x6CBF50, bin]
+  - [0x6D2E70, bin]
+  - [0x6D3A80, bin]
+  - [0x6D7590, bin]
+  - [0x6D7980, bin]
+  - [0x6E1BB0, bin]
+  - [0x6E4D60, bin]
+  - [0x6EC990, bin]
+  - [0x6EDF00, bin]
+  - [0x6FFC60, bin]
+  - [0x702260, bin]
+  - [0x709490, bin]
+  - [0x709F60, bin]
+  - [0x710370, bin]
+  - [0x710BB0, bin]
+  - [0x71AB60, bin]
+  - [0x71D260, bin]
+  - [0x726500, bin]
+  - [0x7275F0, bin]
+  - [0x7298F0, bin]
+  - [0x729B50, bin]
+  - [0x7302C0, bin]
+  - [0x731000, bin]
+  - [0x73B220, bin]
+  - [0x73BAF0, bin]
+  - [0x7446F0, bin]
+  - [0x746330, bin]
+  - [0x747000, bin]
+  - [0x747240, bin]
+  - [0x7490E0, bin]
+  - [0x749570, bin]
+  - [0x7591B0, bin]
+  - [0x75A960, bin]
+  - [0x764930, bin]
+  - [0x7660A0, bin]
+  - [0x7715E0, bin]
+  - [0x773BC0, bin]
+  - [0x77A050, bin]
+  - [0x77ADF0, bin]
+  - [0x780720, bin]
+  - [0x7811D0, bin]
+  - [0x7872E0, bin]
+  - [0x787810, bin]
+  - [0x78F8C0, bin]
+  - [0x790470, bin]
+  - [0x7959B0, bin]
+  - [0x796830, bin]
+  - [0x79A1D0, bin]
+  - [0x79AD20, bin]
+  - [0x79F3E0, bin]
+  - [0x79FC50, bin]
+  - [0x7AAC00, bin]
+  - [0x7AD1D0, bin]
+  - [0x7B27C0, bin]
+  - [0x7B2B30, bin]
+  - [0x7BB830, bin]
+  - [0x7BD370, bin]
+  - [0x7C62B0, bin]
+  - [0x7C7880, bin]
+  - [0x7CC2E0, bin]
+  - [0x7CCD00, bin]
+  - [0x7D03C0, bin]
+  - [0x7D0590, bin]
+  - [0x7D0FE0, bin]
+  - [0x7D1470, bin]
+  - [0x7D3ED0, bin]
+  - [0x7D4510, bin]
+  - [0x7D9460, bin]
+  - [0x7D9C50, bin]
+  - [0x7E6CE0, bin]
+  - [0x7E7D50, bin]
+  - [0x7F4C40, bin]
+  - [0x7F5C60, bin]
+  - [0x7FCC30, bin]
+  - [0x7FD590, bin]
+  - [0x801F10, bin]
+  - [0x8037D0, bin]
+  - [0x806550, bin]
+  - [0x806C80, bin]
+  - [0x810240, bin]
+  - [0x8110C0, bin]
+  - [0x8135C0, bin]
+  - [0x813B20, bin]
+  - [0x819910, bin]
+  - [0x81AE60, bin]
+  - [0x81E2B0, bin]
+  - [0x81E990, bin]
+  - [0x823AF0, bin]
+  - [0x8245C0, bin]
+  - [0x82CA50, bin]
+  - [0x82D000, bin]
+  - [0x8310E0, bin]
+  - [0x832A10, bin]
+  - [0x836970, bin]
+  - [0x836D10, bin]
+  - [0x841FB0, bin]
+  - [0x8446A0, bin]
+  - [0x849D60, bin]
+  - [0x84ABF0, bin]
+  - [0x854150, bin]
+  - [0x8552F0, bin]
+  - [0x85D880, bin]
+  - [0x85E1F0, bin]
+  - [0x85ED20, bin]
+  - [0x85F250, bin]
+  - [0x860610, bin]
+  - [0x860790, bin]
+  - [0x86F970, bin]
+  - [0x871E10, bin]
+  - [0x87EDC0, bin]
+  - [0x8802E0, bin]
+  - [0x88C2D0, bin]
+  - [0x88D6E0, bin]
+  - [0x894E10, bin]
+  - [0x896320, bin]
+  - [0x89A4D0, bin]
+  - [0x89AA00, bin]
+  - [0x8A89F0, bin]
+  - [0x8AA990, bin]
+  - [0x8B08F0, bin]
+  - [0x8B1860, bin]
+  - [0x8B50E0, bin]
+  - [0x8B6800, bin]
+  - [0x8C4FD0, bin]
+  - [0x8C6B80, bin]
+  - [0x8C99A0, bin]
+  - [0x8C9ED0, bin]
+  - [0x8D39A0, bin]
+  - [0x8D4470, bin]
+  - [0x8D8480, bin]
+  - [0x8D8B80, bin]
+  - [0x8DF280, bin]
+  - [0x8E0410, bin]
+  - [0x8E3C70, bin]
+  - [0x8E4240, bin]
+  - [0x8E97E0, bin]
+  - [0x8EA860, bin]
+  - [0x8F31B0, bin]
+  - [0x8F67E0, bin]
+  - [0x8F8320, bin]
+  - [0x8F84E0, bin]
+  - [0x8F9890, bin]
+  - [0x8F9B70, bin]
+  - [0x8FB830, bin]
+  - [0x8FBD60, bin]
+  - [0x8FCA00, bin]
+  - [0x8FCCD0, bin]
+  - [0x8FF280, bin]
+  - [0x8FF500, bin]
+  - [0x9032C0, bin]
+  - [0x903D30, bin]
+  - [0x905BF0, bin]
+  - [0x905E30, bin]
+  - [0x9084A0, bin]
+  - [0x908700, bin]
+  - [0x909E80, bin]
+  - [0x90A3D0, bin]
+  - [0x910300, bin]
+  - [0x911830, bin]
+  - [0x9132A0, bin]
+  - [0x913420, bin]
+  - [0x915910, bin]
+  - [0x915B80, bin]
+  - [0x917F50, bin]
+  - [0x9181B0, bin]
+  - [0x91A720, bin]
+  - [0x91A990, bin]
+  - [0x91C8A0, bin]
+  - [0x91CF40, bin]
+  - [0x926440, bin]
+  - [0x9269B0, bin]
+  - [0x92B7C0, bin]
+  - [0x92C090, bin]
+  - [0x932970, bin]
+  - [0x933EA0, bin]
+  - [0x939960, bin]
+  - [0x93A220, bin]
+  - [0x93E7A0, bin]
+  - [0x93F550, bin]
+  - [0x946D70, bin]
+  - [0x947F10, bin]
+  - [0x949E30, bin]
+  - [0x94A350, bin]
+  - [0x94BD50, bin]
+  - [0x94C2A0, bin]
+  - [0x94F6D0, bin]
+  - [0x9501A0, bin]
+  - [0x9528B0, bin]
+  - [0x952C00, bin]
+  - [0x953910, bin]
+  - [0x953B50, bin]
+  - [0x9566E0, bin]
+  - [0x956E10, bin]
+  - [0x9607D0, bin]
+  - [0x962980, bin]
+  - [0x9712B0, bin]
+  - [0x972A90, bin]
+  - [0x9802E0, bin]
+  - [0x981A80, bin]
+  - [0x9825B0, bin]
+  - [0x982660, bin]
+  - [0x983D70, bin]
+  - [0x984230, bin]
+  - [0x9847E0, bin]
+  - [0x984E60, bin]
+  - [0x985450, bin]
+  - [0x985A40, bin]
+  - [0x985C50, bin]
+  - [0x9861F0, bin]
+  - [0x9868F0, bin]
+  - [0x986BB0, bin]
+  - [0x9871B0, bin]
+  - [0x987760, bin]
+  - [0x987D10, bin]
+  - [0x987F40, bin]
+  - [0x988540, bin]
+  - [0x988AC0, bin]
+  - [0x989040, bin]
+  - [0x989720, bin]
+  - [0x9899E0, bin]
+  - [0x989BF0, bin]
+  - [0x989E80, bin]
+  - [0x98A110, bin]
+  - [0x98A7F0, bin]
+  - [0x98ACC0, bin]
+  - [0x98B720, bin]
+  - [0x98BD80, bin]
+  - [0x98C940, bin]
+  - [0x98E650, bin]
+  - [0x98E870, bin]
+  - [0x98EDD0, bin]
+  - [0x98F100, bin]
+  - [0x98F400, bin]
+  - [0x98F5C0, bin]
+  - [0x98F780, bin]
+  - [0x98FD90, bin]
+  - [0x9900B0, bin]
+  - [0x990260, bin]
+  - [0x990430, bin]
+  - [0x990640, bin]
+  - [0x9908D0, bin]
+  - [0x990B20, bin]
+  - [0x990D20, bin]
+  - [0x991D80, bin]
+  - [0x9921B0, bin]
+  - [0x992200, bin]
+  - [0x992570, bin]
+  - [0x992AB0, bin]
+  - [0x994430, bin]
+  - [0x994490, bin]
+  - [0x994720, bin]
+  - [0x994780, bin]
+  - [0x995880, bin]
+  - [0x995E00, bin]
+  - [0x9962E0, bin]
+  - [0x9966D0, bin]
+  - [0x996EA0, bin]
+  - [0x9971C0, bin]
+  - [0x997B50, bin]
+  - [0x997CE0, bin]
+  - [0x997FC0, bin]
+  - [0x998060, bin]
+  - [0x998680, bin]
+  - [0x998930, bin]
+  - [0x998E80, bin]
+  - [0x998FC0, bin]
+  - [0x99ABD0, bin]
+  - [0x99AC70, bin]
+  - [0x99C7E0, bin]
+  - [0x99D020, bin]
+  - [0x99DA10, bin]
+  - [0x99E810, bin]
+  - [0x99F310, bin]
+  - [0x99F8E0, bin]
+  - [0x99FF00, bin]
+  - [0x9A0720, bin]
+  - [0x9A0B90, bin]
+  - [0x9A25B0, bin]
+  - [0x9A2C10, bin]
+  - [0x9A3560, bin]
+  - [0x9A39D0, bin]
+  - [0x9A3CA0, bin]
+  - [0x9A3D00, bin]
+  - [0x9A4690, bin]
+  - [0x9A46F0, bin]
+  - [0x9A4930, bin]
+  - [0x9A4B30, bin]
+  - [0x9A54C0, bin]
+  - [0x9A5660, bin]
+  - [0x9A5B10, bin]
+  - [0x9A5DE0, bin]
+  - [0x9A5F90, bin]
+  - [0x9A6050, bin]
+  - [0x9A7160, bin]
+  - [0x9A7720, bin]
+  - [0x9A7F30, bin]
+  - [0x9A85B0, bin]
+  - [0x9A8810, bin]
+  - [0x9A8870, bin]
+  - [0x9A8A20, bin]
+  - [0x9A8E80, bin]
+  - [0x9ABDD0, bin]
+  - [0x9ABFD0, bin]
+  - [0x9AC240, bin]
+  - [0x9ACA30, bin]
+  - [0x9ACBA0, bin]
+  - [0x9AE620, bin]
+  - [0x9AE8B0, bin]
+  - [0x9AEE10, bin]
+  - [0x9AEFF0, bin]
+  - [0x9AF1D0, bin]
+  - [0x9AF480, bin]
+  - [0x9AF720, bin]
+  - [0x9AFD40, bin]
+  - [0x9AFEF0, bin]
+  - [0x9B0010, bin]
+  - [0x9B0280, bin]
+  - [0x9B04F0, bin]
+  - [0x9B0D70, bin]
+  - [0x9B1050, bin]
+  - [0x9B1220, bin]
+  - [0x9B1400, bin]
+  - [0x9B15F0, bin]
+  - [0x9B2120, bin]
+  - [0x9B2210, bin]
+  - [0x9B2C30, bin]
+  - [0x9B2D20, bin]
+  - [0x9B3560, bin]
+  - [0x9B3730, bin]
+  - [0x9B3E40, bin]
+  - [0x9B4190, bin]
+  - [0x9B5440, bin]
+  - [0x9BD180, bin]
+  - [0x9BE730, bin]
+  - [0x9BEAF0, bin]
+  - [0x9BF210, bin]
+  - [0x9BF500, bin]
+  - [0x9BFC40, bin]
+  - [0x9C1250, bin]
+  - [0x9C1590, bin]
+  - [0x9C1600, bin]
+  - [0x9C1B00, bin]
+  - [0x9C2440, bin]
+  - [0x9C2510, bin]
+  - [0x9C27A0, bin]
+  - [0x9C27F0, bin]
+  - [0x9C3410, bin]
+  - [0x9C34E0, bin]
+  - [0x9C38A0, bin]
+  - [0x9C3910, bin]
+  - [0x9C3980, bin]
+  - [0x9C3C40, bin]
+  - [0x9C3CD0, bin]
+  - [0x9C43E0, bin]
+  - [0x9C4B10, bin]
+  - [0x9C5FA0, bin]
+  - [0x9C6060, bin]
+  - [0x9C62E0, bin]
+  - [0x9C6D20, bin]
+  - [0x9C70A0, bin]
+  - [0x9C81D0, bin]
+  - [0x9C8A20, bin]
+  - [0x9C8B70, bin]
+  - [0x9C8BE0, bin]
+  - [0x9CA960, bin]
+  - [0x9CC500, bin]
+  - [0x9CDD90, bin]
+  - [0x9D0F90, bin]
+  - [0x9D3240, bin]
+  - [0x9D4B90, bin]
+  - [0x9D7200, bin]
+  - [0x9D8020, bin]
+  - [0x9D98B0, bin]
+  - [0x9D9EC0, bin]
+  - [0x9DAD20, bin]
+  - [0x9DCA70, bin]
+  - [0x9DD2E0, bin]
+  - [0x9E0290, bin]
+  - [0x9E0300, bin]
+  - [0x9E0B00, bin]
+  - [0x9E0E30, bin]
+  - [0x9E0EA0, bin]
+  - [0x9E16D0, bin]
+  - [0x9E18F0, bin]
+  - [0x9E1B90, bin]
+  - [0x9E31A0, bin]
+  - [0x9E3400, bin]
+  - [0x9E3830, bin]
+  - [0x9E4660, bin]
+  - [0x9E59E0, bin]
+  - [0x9E5A40, bin]
+  - [0x9E5AA0, bin]
+  - [0x9E5B60, bin]
+  - [0x9E7330, bin]
+  - [0x9E7B40, bin]
+  - [0x9E97C0, bin]
+  - [0x9E9BD0, bin]
+  - [0x9E9EE0, bin]
+  - [0x9EB350, bin]
+  - [0x9EB650, bin]
+  - [0x9EBD80, bin]
+  - [0x9EC7B0, bin]
+  - [0x9ED1E0, bin]
+  - [0x9ED670, bin]
+  - [0x9ED920, bin]
+  - [0x9EDD20, bin]
+  - [0x9EF3E0, bin]
+  - [0x9EFA10, bin]
+  - [0x9F01C0, bin]
+  - [0x9F0970, bin]
+  - [0x9F13E0, bin]
+  - [0x9F1A80, bin]
+  - [0x9F1CD0, bin]
+  - [0x9F1EE0, bin]
+  - [0x9F26D0, bin]
+  - [0x9F2910, bin]
+  - [0x9F33D0, bin]
+  - [0x9F3710, bin]
+  - [0x9F3B10, bin]
+  - [0x9F4BF0, bin]
+  - [0x9F4FE0, bin]
+  - [0x9F5400, bin]
+  - [0x9F5B70, bin]
+  - [0x9F7020, bin]
+  - [0x9F7420, bin]
+  - [0x9F7630, bin]
+  - [0x9F7FA0, bin]
+  - [0x9F8460, bin]
+  - [0x9F85D0, bin]
+  - [0x9FAF30, bin]
+  - [0x9FB0A0, bin]
+  - [0x9FD460, bin]
+  - [0x9FDCD0, bin]
+  - [0x9FE8C0, bin]
+  - [0x9FECB0, bin]
+  - [0x9FF290, bin]
+  - [0x9FF810, bin]
+  - [0x9FFB90, bin]
+  - [0xA000C0, bin]
+  - [0xA00390, bin]
+  - [0xA01930, bin]
+  - [0xA01A70, bin]
+  - [0xA04EF0, bin]
+  - [0xA05220, bin]
+  - [0xA05860, bin]
+  - [0xA063B0, bin]
+  - [0xA081F0, bin]
+  - [0xA085F0, bin]
+  - [0xA08930, bin]
+  - [0xA096F0, bin]
+  - [0xA0AB00, bin]
+  - [0xA0AFA0, bin]
+  - [0xA0B590, bin]
+  - [0xA0BE80, bin]
+  - [0xA0C2B0, bin]
+  - [0xA0C7B0, bin]
+  - [0xA0F030, bin]
+  - [0xA102B0, bin]
+  - [0xA10D20, bin]
+  - [0xA11DB0, bin]
+  - [0xA14950, bin]
+  - [0xA17AE0, bin]
+  - [0xA199B0, bin]
+  - [0xA1A770, bin]
+  - [0xA1B520, bin]
+  - [0xA1C640, bin]
+  - [0xA1F310, bin]
+  - [0xA21CC0, bin]
+  - [0xA22460, bin]
+  - [0xA22BF0, bin]
+  - [0xA24860, bin]
+  - [0xA25160, bin]
+  - [0xA28BC0, bin]
+  - [0xA28F60, bin]
+  - [0xA291F0, bin]
+  - [0xA2B490, bin]
+  - [0xA2B950, bin]
+  - [0xA2BE80, bin]
+  - [0xA30030, bin]
+  - [0xA30460, bin]
+  - [0xA30BE0, bin]
+  - [0xA31360, bin]
+  - [0xA319A0, bin]
+  - [0xA31CC0, bin]
+  - [0xA33D60, bin]
+  - [0xA34850, bin]
+  - [0xA358A0, bin]
+  - [0xA36060, bin]
+  - [0xA365A0, bin]
+  - [0xA368C0, bin]
+  - [0xA36B60, bin]
+  - [0xA37500, bin]
+  - [0xA37970, bin]
+  - [0xA38760, bin]
+  - [0xA38CA0, bin]
+  - [0xA39D40, bin]
+  - [0xA3A420, bin]
+  - [0xA3AB00, bin]
+  - [0xA3AD70, bin]
+  - [0xA3BC60, bin]
+  - [0xA3C200, bin]
+  - [0xA3C720, bin]
+  - [0xA3CD40, bin]
+  - [0xA3D010, bin]
+  - [0xA3DC40, bin]
+  - [0xA3E480, bin]
+  - [0xA3F130, bin]
+  - [0xA3FDF0, bin]
+  - [0xA40390, bin]
+  - [0xA40D10, bin]
+  - [0xA428A0, bin]
+  - [0xA42E80, bin]
+  - [0xA43400, bin]
+  - [0xA437D0, bin]
+  - [0xA44080, bin]
+  - [0xA45BC0, bin]
+  - [0xA46B40, bin]
+  - [0xA47000, bin]
+  - [0xA47320, bin]
+  - [0xA49DD0, bin]
+  - [0xA4AE70, bin]
+  - [0xA4BED0, bin]
+  - [0xA4CE70, bin]
+  - [0xA4D310, bin]
+  - [0xA4E590, bin]
+  - [0xA4ECF0, bin]
+  - [0xA50670, bin]
+  - [0xA52580, bin]
+  - [0xA53C00, bin]
+  - [0xA54050, bin]
+  - [0xA546A0, bin]
+  - [0xA56370, bin]
+  - [0xA56B70, bin]
+  - [0xA572E0, bin]
+  - [0xA57910, bin]
+  - [0xA58C10, bin]
+  - [0xA593E0, bin]
+  - [0xA59760, bin]
+  - [0xA5A2C0, bin]
+  - [0xA5A770, bin]
+  - [0xA5A980, bin]
+  - [0xA5BC20, bin]
+  - [0xA5C840, bin]
+  - [0xA5D820, bin]
+  - [0xA5DE10, bin]
+  - [0xA5F970, bin]
+  - [0xA5FEA0, bin]
+  - [0xA60270, bin]
+  - [0xA607F0, bin]
+  - [0xA60E10, bin]
+  - [0xA626F0, bin]
+  - [0xA62D00, bin]
+  - [0xA63D50, bin]
+  - [0xA64130, bin]
+  - [0xA64BE0, bin]
+  - [0xA655D0, bin]
+  - [0xA66440, bin]
+  - [0xA66A80, bin]
+  - [0xA69310, bin]
+  - [0xA69ED0, bin]
+  - [0xA6A2E0, bin]
+  - [0xA6AE60, bin]
+  - [0xA6B2C0, bin]
+  - [0xA6C260, bin]
+  - [0xA6CC80, bin]
+  - [0xA6D650, bin]
+  - [0xA6F540, bin]
+  - [0xA6FF30, bin]
+  - [0xA70DA0, bin]
+  - [0xA71C80, bin]
+  - [0xA72650, bin]
+  - [0xA73110, bin]
+  - [0xA747B0, bin]
+  - [0xA75640, bin]
+  - [0xA757F0, bin]
+  - [0xA75F50, bin]
+  - [0xA76BF0, bin]
+  - [0xA77D80, bin]
+  - [0xA78E90, bin]
+  - [0xA79A40, bin]
+  - [0xA7A1B0, bin]
+  - [0xA7B1D0, bin]
+  - [0xA7B660, bin]
+  - [0xA7C6E0, bin]
+  - [0xA7D560, bin]
+  - [0xA7E9E0, bin]
+  - [0xA7EDB0, bin]
+  - [0xA7F910, bin]
+  - [0xA7FE10, bin]
+  - [0xA80BD0, bin]
+  - [0xA810F0, bin]
+  - [0xA81E50, bin]
+  - [0xA82C10, bin]
+  - [0xA82DE0, bin]
+  - [0xA84510, bin]
+  - [0xA85E40, bin]
+  - [0xA86DF0, bin]
+  - [0xA87B00, bin]
+  - [0xA88C00, bin]
+  - [0xA899D0, bin]
+  - [0xA8A9C0, bin]
+  - [0xA8C5D0, bin]
+  - [0xA8CB00, bin]
+  - [0xA8D1A0, bin]
+  - [0xA8EA90, bin]
+  - [0xA8F9D0, bin]
+  - [0xA8FB90, bin]
+  - [0xA90940, bin]
+  - [0xA90DB0, bin]
+  - [0xA917F0, bin]
+  - [0xA91D90, bin]
+  - [0xA91FC0, bin]
+  - [0xA92920, bin]
+  - [0xA9DF20, bin]
+  - [0xA9E590, bin]
+  - [0xA9EEF0, bin]
+  - [0xA9F880, bin]
+  - [0xAA0CC0, bin]
+  - [0xAA13F0, bin]
+  - [0xAA1770, bin]
+  - [0xAA2430, bin]
+  - [0xAA2D00, bin]
+  - [0xAA35E0, bin]
+  - [0xAA3E90, bin]
+  - [0xAA9290, bin]
+  - [0xAA9AC0, bin]
+  - [0xAB0950, bin]
+  - [0xAB0BA0, bin]
+  - [0xAB1240, bin]
+  - [0xAB1BE0, bin]
+  - [0xAB1E20, bin]
+  - [0xAB2240, bin]
+  - [0xAB2EA0, bin]
+  - [0xAB95D0, bin]
+  - [0xAB9E40, bin]
+  - [0xABA100, bin]
+  - [0xABA810, bin]
+  - [0xABAFC0, bin]
+  - [0xABB790, bin]
+  - [0xABBF50, bin]
+  - [0xABC310, bin]
+  - [0xABCE00, bin]
+  - [0xABD4B0, bin]
+  - [0xABD750, bin]
+  - [0xABDB20, bin]
+  - [0xABE070, bin]
+  - [0xABEA40, bin]
+  - [0xABEDF0, bin]
+  - [0xAC08D0, bin]
+  - [0xAC0BB0, bin]
+  - [0xAC15B0, bin]
+  - [0xAC1990, bin]
+  - [0xAC1B90, bin]
+  - [0xAC20E0, bin]
+  - [0xAC2360, bin]
+  - [0xAC3360, bin]
+  - [0xAC3AE0, bin]
+  - [0xAC3FC0, bin]
+  - [0xAC4590, bin]
+  - [0xAC59F0, bin]
+  - [0xAC5F70, bin]
+  - [0xAC61E0, bin]
+  - [0xAC66B0, bin]
+  - [0xAC7870, bin]
+  - [0xAC7F70, bin]
+  - [0xAC86C0, bin]
+  - [0xAC8BC0, bin]
+  - [0xACE1B0, bin]
+  - [0xACE740, bin]
+  - [0xACEE00, bin]
+  - [0xACF5D0, bin]
+  - [0xACF880, bin]
+  - [0xACFBA0, bin]
+  - [0xAD0390, bin]
+  - [0xAD0FC0, bin]
+  - [0xAD1830, bin]
+  - [0xAD1BA0, bin]
+  - [0xAD2A70, bin]
+  - [0xAD40D0, bin]
+  - [0xAD4310, bin]
+  - [0xAD46C0, bin]
+  - [0xAD5A50, bin]
+  - [0xAD5E40, bin]
+  - [0xAD6820, bin]
+  - [0xAD6D30, bin]
+  - [0xADDB90, bin]
+  - [0xADE430, bin]
+  - [0xADE890, bin]
+  - [0xADEBC0, bin]
+  - [0xADEDD0, bin]
+  - [0xADF880, bin]
+  - [0xADFC40, bin]
+  - [0xAE0380, bin]
+  - [0xAE21C0, bin]
+  - [0xAE4B40, bin]
+  - [0xAEE2A0, bin]
+  - [0xAEEA40, bin]
+  - [0xAEEE70, bin]
+  - [0xAF0300, bin]
+  - [0xAF1520, bin]
+  - [0xAF2460, bin]
+  - [0xAF2950, bin]
+  - [0xAF3CC0, bin]
+  - [0xAF6320, bin]
+  - [0xAF6C20, bin]
+  - [0xAF6F70, bin]
+  - [0xAF76F0, bin]
+  - [0xAF7EC0, bin]
+  - [0xAF88B0, bin]
+  - [0xAFAEE0, bin]
+  - [0xAFC0E0, bin]
+  - [0xAFC370, bin]
+  - [0xAFC860, bin]
+  - [0xAFD170, bin]
+  - [0xAFD8B0, bin]
+  - [0xAFEB60, bin]
+  - [0xAFF2E0, bin]
+  - [0xB01440, bin]
+  - [0xB01910, bin]
+  - [0xB020E0, bin]
+  - [0xB04170, bin]
+  - [0xB050E0, bin]
+  - [0xB05B10, bin]
+  - [0xB06A00, bin]
+  - [0xB08710, bin]
+  - [0xB08DB0, bin]
+  - [0xB0AD70, bin]
+  - [0xB0B2E0, bin]
+  - [0xB0BC30, bin]
+  - [0xB0FED0, bin]
+  - [0xB102D0, bin]
+  - [0xB105C0, bin]
+  - [0xB108B0, bin]
+  - [0xB114B0, bin]
+  - [0xB14660, bin]
+  - [0xB14AF0, bin]
+  - [0xB15E60, bin]
+  - [0xB15FE0, bin]
+  - [0xB16740, bin]
+  - [0xB17780, bin]
+  - [0xB17F20, bin]
+  - [0xB18420, bin]
+  - [0xB18CF0, bin]
+  - [0xB19460, bin]
+  - [0xB1BA70, bin]
+  - [0xB1C680, bin]
+  - [0xB1CC00, bin]
+  - [0xB1CD90, bin]
+  - [0xB1D550, bin]
+  - [0xB1DA70, bin]
+  - [0xB1E330, bin]
+  - [0xB1EC50, bin]
+  - [0xB1EE50, bin]
+  - [0xB1F210, bin]
+  - [0xB201B0, bin]
+  - [0xB21040, bin]
+  - [0xB21520, bin]
+  - [0xB219F0, bin]
+  - [0xB220E0, bin]
+  - [0xB22470, bin]
+  - [0xB234C0, bin]
+  - [0xB23630, bin]
+  - [0xB24E10, bin]
+  - [0xB26E80, bin]
+  - [0xB27E10, bin]
+  - [0xB283B0, bin]
+  - [0xB2AFF0, bin]
+  - [0xB2C6F0, bin]
+  - [0xB2D130, bin]
+  - [0xB307B0, bin]
+  - [0xB32150, bin]
+  - [0xB33270, bin]
+  - [0xB33450, bin]
+  - [0xB35C30, bin]
+  - [0xB35D80, bin]
+  - [0xB36610, bin]
+  - [0xB36670, bin]
+  - [0xB366F0, bin]
+  - [0xB36770, bin]
+  - [0xB367F0, bin]
+  - [0xB38250, bin]
+  - [0xB39F50, bin]
+  - [0xB3B810, bin]
+  - [0xB3D330, bin]
+  - [0xB3F5D0, bin]
+  - [0xB40C20, bin]
+  - [0xB42D90, bin]
+  - [0xB442F0, bin]
+  - [0xB45FD0, bin]
+  - [0xB47B80, bin]
+  - [0xB49E20, bin]
+  - [0xB4BC40, bin]
+  - [0xB4D190, bin]
+  - [0xB4E2F0, bin]
+  - [0xB4E530, bin]
+  - [0xB4E6B0, bin]
+  - [0xB4EA40, bin]
+  - [0xB4ECF0, bin]
+  - [0xB4EE90, bin]
+  - [0xB4F9B0, bin]
+  - [0xB50740, bin]
+  - [0xB51110, bin]
+  - [0xB51C80, bin]
+  - [0xB529F0, bin]
+  - [0xB53380, bin]
+  - [0xB53F10, bin]
+  - [0xB54CF0, bin]
+  - [0xB55890, bin]
+  - [0xB56180, bin]
+  - [0xB56D40, bin]
+  - [0xB57740, bin]
+  - [0xB581E0, bin]
+  - [0xB588B0, bin]
+  - [0xB61ED0, bin]
+  - [0xB64070, bin]
+  - [0xB69820, bin]
+  - [0xB7B260, bin]
+  - [0xB7EB40, bin]
+  - [0xB7FC80, bin]
+  - [0xB802E0, bin]
+  - [0xB83F20, bin]
+  - [0xB85DF0, bin]
+  - [0xB864B0, bin]
+  - [0xC00000]

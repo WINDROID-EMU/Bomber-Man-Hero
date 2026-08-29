@@ -13,12 +13,7 @@ patches/*.bin
 patches/*.elf
 patches/*.map
 
-# built RSP file
-rsp/
-
-# Output C files
-RecompiledFuncs/
-RecompiledPatches/
+# (RecompiledFuncs, RecompiledPatches, and rsp are tracked)
 
 # Linux build output
 build/

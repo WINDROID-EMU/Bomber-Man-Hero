@@ -35,10 +35,9 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout source and submodules
+      - name: Checkout source code
         uses: actions/checkout@v4
         with:
-          submodules: recursive
           fetch-depth: 0
 
       - name: Set up JDK 17
@@ -56,11 +55,16 @@ jobs:
           yes | sdkmanager --licenses || true
           sdkmanager "platforms;android-36" "build-tools;36.0.0" "cmake;3.22.1" "ndk;29.0.14206865" || sdkmanager --install "platforms;android-34" "ndk;26.1.10909125"
 
+      - name: Build host file_to_c generator
+        run: |
+          g++ -O3 -std=c++17 lib/rt64/src/tools/file_to_c/file_to_c.cpp -o file_to_c
+          chmod +x file_to_c
+
       - name: Build Android Release APK
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Package Release Artifacts
         run: |

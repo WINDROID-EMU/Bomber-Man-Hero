@@ -1,0 +1,112 @@
+#include "recomp.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void func_800608B8(uint8_t* rdram, recomp_context* ctx);
+void recomp_printf(uint8_t* rdram, recomp_context* ctx);
+void func_80088ECC(uint8_t* rdram, recomp_context* ctx);
+void func_8008AE64(uint8_t* rdram, recomp_context* ctx);
+void DecompressFile(uint8_t* rdram, recomp_context* ctx);
+void load_from_rom_to_addr(uint8_t* rdram, recomp_context* ctx);
+void func_8005E040(uint8_t* rdram, recomp_context* ctx);
+void func_8001D4D0(uint8_t* rdram, recomp_context* ctx);
+void Debug_SetBg(uint8_t* rdram, recomp_context* ctx);
+void gluInvertMatrix(uint8_t* rdram, recomp_context* ctx);
+void func_8001C384(uint8_t* rdram, recomp_context* ctx);
+void func_8005DD80(uint8_t* rdram, recomp_context* ctx);
+void func_8005DA00(uint8_t* rdram, recomp_context* ctx);
+void func_8001BD44(uint8_t* rdram, recomp_context* ctx);
+void isRomOffsetTagged(uint8_t* rdram, recomp_context* ctx);
+void func_80060F00(uint8_t* rdram, recomp_context* ctx);
+void func_800623E0(uint8_t* rdram, recomp_context* ctx);
+void func_80070B1C(uint8_t* rdram, recomp_context* ctx);
+void func_8001D000(uint8_t* rdram, recomp_context* ctx);
+void proutPrintf_2(uint8_t* rdram, recomp_context* ctx);
+void GetSi_Status(uint8_t* rdram, recomp_context* ctx);
+void func_800821E0(uint8_t* rdram, recomp_context* ctx);
+void Skybox_ProcessDraw(uint8_t* rdram, recomp_context* ctx);
+void func_8001C464(uint8_t* rdram, recomp_context* ctx);
+void func_8001C70C(uint8_t* rdram, recomp_context* ctx);
+void func_8001C96C(uint8_t* rdram, recomp_context* ctx);
+void func_8001C5B8(uint8_t* rdram, recomp_context* ctx);
+void func_80019510(uint8_t* rdram, recomp_context* ctx);
+void func_8000FD9C(uint8_t* rdram, recomp_context* ctx);
+void func_8001D9E4(uint8_t* rdram, recomp_context* ctx);
+void func_8000EEE8(uint8_t* rdram, recomp_context* ctx);
+void func_8000FC08(uint8_t* rdram, recomp_context* ctx);
+void isObjectTrackedForNoInterpolationLastFrame(uint8_t* rdram, recomp_context* ctx);
+void func_800723EC(uint8_t* rdram, recomp_context* ctx);
+void func_80000964(uint8_t* rdram, recomp_context* ctx);
+void osViSetYScale_recomp(uint8_t* rdram, recomp_context* ctx);
+void osViBlack_recomp(uint8_t* rdram, recomp_context* ctx);
+void func_80083180(uint8_t* rdram, recomp_context* ctx);
+void func_80010408(uint8_t* rdram, recomp_context* ctx);
+void breakpoint_me(uint8_t* rdram, recomp_context* ctx);
+void func_800663EC(uint8_t* rdram, recomp_context* ctx);
+void func_8001CAAC(uint8_t* rdram, recomp_context* ctx);
+void Skybox_GetWidthHeight(uint8_t* rdram, recomp_context* ctx);
+void Skybox_DrawStandard(uint8_t* rdram, recomp_context* ctx);
+void Skybox_DrawWave(uint8_t* rdram, recomp_context* ctx);
+void Skybox_MoveDpad(uint8_t* rdram, recomp_context* ctx);
+void Skybox_MoveY(uint8_t* rdram, recomp_context* ctx);
+void Skybox_MoveX(uint8_t* rdram, recomp_context* ctx);
+void Skybox_ProcessMove(uint8_t* rdram, recomp_context* ctx);
+void Skybox_Format(uint8_t* rdram, recomp_context* ctx);
+void Skybox_LoadFromID(uint8_t* rdram, recomp_context* ctx);
+void func_80284668_code_extra_0(uint8_t* rdram, recomp_context* ctx);
+void recomp_puts(uint8_t* rdram, recomp_context* ctx);
+void recomp_exit(uint8_t* rdram, recomp_context* ctx);
+void recomp_load_overlays(uint8_t* rdram, recomp_context* ctx);
+void osInvalDCache_recomp(uint8_t* rdram, recomp_context* ctx);
+void osInvalICache_recomp(uint8_t* rdram, recomp_context* ctx);
+void osWritebackDCache_recomp(uint8_t* rdram, recomp_context* ctx);
+void recomp_load_overlays_by_rom(uint8_t* rdram, recomp_context* ctx);
+void osSendMesg_recomp(uint8_t* rdram, recomp_context* ctx);
+void osGetCount_recomp(uint8_t* rdram, recomp_context* ctx);
+void osCreateMesgQueue_recomp(uint8_t* rdram, recomp_context* ctx);
+void osRecvMesg_recomp(uint8_t* rdram, recomp_context* ctx);
+void osDpSetStatus_recomp(uint8_t* rdram, recomp_context* ctx);
+void recomp_register_object_extension(uint8_t* rdram, recomp_context* ctx);
+void recomp_register_object_extension_generic(uint8_t* rdram, recomp_context* ctx);
+void recomp_clear_all_object_data(uint8_t* rdram, recomp_context* ctx);
+void recomp_create_object_data(uint8_t* rdram, recomp_context* ctx);
+void recomp_destroy_object_data(uint8_t* rdram, recomp_context* ctx);
+void recomp_get_object_data(uint8_t* rdram, recomp_context* ctx);
+void recomp_get_object_spawn_index(uint8_t* rdram, recomp_context* ctx);
+void recomp_error(uint8_t* rdram, recomp_context* ctx);
+void memcpy_recomp(uint8_t* rdram, recomp_context* ctx);
+void __divdi3_recomp(uint8_t* rdram, recomp_context* ctx);
+void __udivdi3_recomp(uint8_t* rdram, recomp_context* ctx);
+void __umoddi3_recomp(uint8_t* rdram, recomp_context* ctx);
+void strlen_recomp(uint8_t* rdram, recomp_context* ctx);
+void osVirtualToPhysical_recomp(uint8_t* rdram, recomp_context* ctx);
+void osPiStartDma_recomp(uint8_t* rdram, recomp_context* ctx);
+void recomp_abort(uint8_t* rdram, recomp_context* ctx);
+void recomp_get_target_aspect_ratio(uint8_t* rdram, recomp_context* ctx);
+void osExQueueDisplaylistEvent_recomp(uint8_t* rdram, recomp_context* ctx);
+void recomp_xxh3(uint8_t* rdram, recomp_context* ctx);
+void recomp_get_bgm_volume(uint8_t* rdram, recomp_context* ctx);
+void recomp_get_right_analog_inputs(uint8_t* rdram, recomp_context* ctx);
+void recomp_get_analog_cam_enabled(uint8_t* rdram, recomp_context* ctx);
+void recomp_get_analog_inverted_axes(uint8_t* rdram, recomp_context* ctx);
+void recomp_set_right_analog_suppressed(uint8_t* rdram, recomp_context* ctx);
+void osContGetReadData_recomp(uint8_t* rdram, recomp_context* ctx);
+void recomp_get_note_saving_enabled(uint8_t* rdram, recomp_context* ctx);
+void recomp_get_cutscene_aspect_ratio(uint8_t* rdram, recomp_context* ctx);
+void recomp_get_flying_and_swimming_inverted_axes(uint8_t* rdram, recomp_context* ctx);
+void recomp_get_first_person_inverted_axes(uint8_t* rdram, recomp_context* ctx);
+void recomp_get_analog_cam_sensitivity(uint8_t* rdram, recomp_context* ctx);
+void recomp_run_ui_callbacks(uint8_t* rdram, recomp_context* ctx);
+void osCreatePiManager_recomp(uint8_t* rdram, recomp_context* ctx);
+void osYieldThread_recomp(uint8_t* rdram, recomp_context* ctx);
+void osContInit_recomp(uint8_t* rdram, recomp_context* ctx);
+void yield_self_1ms(uint8_t* rdram, recomp_context* ctx);
+void osWritebackDCacheAll_recomp(uint8_t* rdram, recomp_context* ctx);
+void osExQueueDisplaylistEvent(uint8_t* rdram, recomp_context* ctx);
+void recomp_get_render_chunk_radius(uint8_t* rdram, recomp_context* ctx);
+
+#ifdef __cplusplus
+}
+#endif
