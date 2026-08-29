@@ -181,7 +181,8 @@ void banjo::init_config() {
     std::filesystem::path recomp_dir = recompui::file::get_app_folder_path();
 
     if (!recomp_dir.empty()) {
-        std::filesystem::create_directories(recomp_dir);
+        std::error_code ec;
+        std::filesystem::create_directories(recomp_dir, ec);
     }
 
     recompui::config::GeneralTabOptions general_options{};

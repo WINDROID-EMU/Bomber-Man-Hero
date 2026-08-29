@@ -1,32 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
     android:background="#FF0D1117">
 
     <ImageView
         android:id="@+id/imgBackground"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:scaleType="fitCenter"
         android:adjustViewBounds="true"
-        android:background="#FF000000"
-        android:src="@drawable/bomber"
-        android:contentDescription="Bomberman Hero Background" />
+        android:background="#2A000000"
+        android:contentDescription="Bomberman Hero Background"
+        android:scaleType="fitXY"
+        android:src="@drawable/title" />
 
     <!-- Dark Overlay for Contrast -->
     <View
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#66000000" />
+        android:background="#29000000" />
 
     <!-- Main Content Layout -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:padding="24dp"
-        android:gravity="center_vertical">
+        android:padding="24dp">
 
         <!-- Left Side: Empty Space to showcase artwork -->
         <View
@@ -39,47 +39,60 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="0.8"
-            android:orientation="vertical"
             android:gravity="center_horizontal"
-            android:background="@drawable/card_bg_dark"
+            android:orientation="vertical"
             android:padding="24dp">
 
             <!-- Start Game Button -->
             <Button
                 android:id="@+id/btnStartGame"
                 android:layout_width="match_parent"
-                android:layout_height="56dp"
+                android:layout_height="54dp"
+                android:layout_marginBottom="10dp"
+                android:background="@drawable/button_bg_secondary"
+                android:backgroundTint="#8503CC0B"
+                android:elevation="4dp"
                 android:text="🎮 INICIAR JOGO"
                 android:textColor="#FFFFFF"
                 android:textSize="16sp"
-                android:textStyle="bold"
-                android:background="@drawable/button_bg_primary"
-                android:elevation="4dp"
-                android:layout_marginBottom="12dp" />
+                android:textStyle="bold" />
+
+            <!-- Select ROM Button -->
+            <Button
+                android:id="@+id/btnSelectRom"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginBottom="10dp"
+                android:background="@drawable/button_bg_secondary"
+                android:elevation="2dp"
+                android:text="📂 SELECIONAR ROM"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold" />
 
             <!-- Settings Button -->
             <Button
                 android:id="@+id/btnSettings"
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
+                android:layout_marginBottom="12dp"
+                android:background="@drawable/button_bg_secondary"
+                android:elevation="2dp"
                 android:text="⚙️ CONFIGURAÇÕES"
                 android:textColor="#FFFFFF"
                 android:textSize="16sp"
-                android:textStyle="bold"
-                android:background="@drawable/button_bg_secondary"
-                android:elevation="2dp"
-                android:layout_marginBottom="12dp" />
+                android:textStyle="bold" />
 
             <!-- Exit Button -->
             <Button
                 android:id="@+id/btnExit"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
+                android:background="@drawable/button_bg_secondary"
                 android:text="🚪 SAIR"
                 android:textColor="#FFE74C3C"
                 android:textSize="14sp"
-                android:textStyle="bold"
-                android:background="@drawable/button_bg_secondary" />
+                android:textStyle="bold" />
 
         </LinearLayout>
 

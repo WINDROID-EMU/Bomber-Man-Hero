@@ -1,16 +1,32 @@
 package com.bmherorecompiled
 
+import android.os.Environment
 import android.util.Log
 import org.json.JSONObject
 import java.io.File
 
 /**
  * ConfigManager — Configuration Storage Manager for Bomberman Hero Recompiled
- * Saves and loads options to/from /sdcard/BMH/config.json
+ * Saves and loads options safely from /sdcard/BMH/config.json or internal fallback.
  */
 object ConfigManager {
     private const val TAG = "BMHConfig"
-    private const val CONFIG_PATH = "/sdcard/BMH/config.json"
+
+    private fun getConfigFile(): File {
+        try {
+            val publicFolder = File(Environment.getExternalStorageDirectory(), "BMH")
+            if (publicFolder.exists() || publicFolder.mkdirs()) {
+                return File(publicFolder, "config.json")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Cannot access external storage /sdcard/BMH, using internal fallback", e)
+        }
+        val fallback = File("/data/data/com.bmherorecompiled/files/config/config.json")
+        try {
+            fallback.parentFile?.mkdirs()
+        } catch (ignored: Exception) {}
+        return fallback
+    }
 
     // Default configuration values
     var resolution: String = "720p"          // "Auto", "720p", "1080p", "240p"
@@ -21,10 +37,14 @@ object ConfigManager {
     var sfxVolume: Int = 100                 // 0 to 100
     var touchOpacity: Int = 80               // 10 to 100 (%)
     var vibrationStrength: Int = 100         // 0 to 100 (%)
+    var driverType: String = "turnip"        // "system", "turnip", "custom"
+    var driverName: String = "Turnip (Mesa 26.0.0)"
+    var customDriverPath: String = ""
+    var customDriverLibrary: String = ""
 
     fun load() {
         try {
-            val file = File(CONFIG_PATH)
+            val file = getConfigFile()
             if (!file.exists()) {
                 save() // create default config file
                 return
@@ -40,8 +60,12 @@ object ConfigManager {
             sfxVolume = json.optInt("sfxVolume", 100)
             touchOpacity = json.optInt("touchOpacity", 80)
             vibrationStrength = json.optInt("vibrationStrength", 100)
+            driverType = json.optString("driverType", "turnip")
+            driverName = json.optString("driverName", "Turnip (Mesa 26.0.0)")
+            customDriverPath = json.optString("customDriverPath", "")
+            customDriverLibrary = json.optString("customDriverLibrary", "")
 
-            Log.i(TAG, "Config loaded successfully from $CONFIG_PATH")
+            Log.i(TAG, "Config loaded successfully from ${file.absolutePath}")
         } catch (e: Exception) {
             Log.e(TAG, "Error loading config file", e)
         }
@@ -49,10 +73,8 @@ object ConfigManager {
 
     fun save() {
         try {
-            val folder = File("/sdcard/BMH")
-            if (!folder.exists()) {
-                folder.mkdirs()
-            }
+            val file = getConfigFile()
+            file.parentFile?.mkdirs()
             val json = JSONObject().apply {
                 put("resolution", resolution)
                 put("aspectRatio", aspectRatio)
@@ -62,9 +84,13 @@ object ConfigManager {
                 put("sfxVolume", sfxVolume)
                 put("touchOpacity", touchOpacity)
                 put("vibrationStrength", vibrationStrength)
+                put("driverType", driverType)
+                put("driverName", driverName)
+                put("customDriverPath", customDriverPath)
+                put("customDriverLibrary", customDriverLibrary)
             }
-            File(CONFIG_PATH).writeText(json.toString(4))
-            Log.i(TAG, "Config saved successfully to $CONFIG_PATH")
+            file.writeText(json.toString(4))
+            Log.i(TAG, "Config saved successfully to ${file.absolutePath}")
         } catch (e: Exception) {
             Log.e(TAG, "Error saving config file", e)
         }
@@ -79,6 +105,10 @@ object ConfigManager {
         sfxVolume = 100
         touchOpacity = 80
         vibrationStrength = 100
+        driverType = "turnip"
+        driverName = "Turnip (Mesa 26.0.0)"
+        customDriverPath = ""
+        customDriverLibrary = ""
         save()
     }
 }

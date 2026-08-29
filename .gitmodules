@@ -3,7 +3,7 @@
 	url = https://github.com/RevoSucks/BMHeroSyms.git
 [submodule "lib/N64ModernRuntime"]
 	path = lib/N64ModernRuntime
-	url = https://github.com/N64Recomp/N64ModernRuntime.git
+	url = https://github.com/linkzenic/N64ModernRuntime.git
 [submodule "lib/RecompFrontend"]
 	path = lib/RecompFrontend
 	url = https://github.com/N64Recomp/RecompFrontend.git
@@ -12,4 +12,5 @@
 	url = https://github.com/Bomberhackers/bmhero.git
 [submodule "lib/rt64"]
 	path = lib/rt64
-	url = https://github.com/rt64/rt64.git
+	url = https://github.com/linkzenic/rt64.git
+

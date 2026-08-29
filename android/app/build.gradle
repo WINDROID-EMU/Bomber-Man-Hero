@@ -21,7 +21,6 @@ android {
         externalNativeBuild {
             cmake {
                 cppFlags '-std=c++20 -fms-extensions -fno-strict-aliasing'
-                targets 'BMHeroRecompiled'
                 arguments '-DANDROID_STL=c++_shared',
                         '-DANDROID_PLATFORM=android-26',
                         '-DRT64_STATIC=TRUE',

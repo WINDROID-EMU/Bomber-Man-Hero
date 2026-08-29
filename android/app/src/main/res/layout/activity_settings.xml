@@ -119,7 +119,42 @@
                     android:id="@+id/spinMSAA"
                     android:layout_width="match_parent"
                     android:layout_height="40dp"
-                    android:background="#1E293B" />
+                    android:background="#1E293B"
+                    android:layout_marginBottom="12dp" />
+
+                <!-- GPU Vulkan Driver (AdrenoTools) -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Driver Vulkan / GPU (AdrenoTools)"
+                    android:textColor="#94A3B8"
+                    android:textSize="13sp" />
+                <Spinner
+                    android:id="@+id/spinDriver"
+                    android:layout_width="match_parent"
+                    android:layout_height="40dp"
+                    android:background="#1E293B"
+                    android:layout_marginBottom="6dp" />
+
+                <TextView
+                    android:id="@+id/txtDriverInfo"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Driver atual: Turnip (Mesa 26.0.0)"
+                    android:textColor="#38BDF8"
+                    android:textSize="11sp"
+                    android:layout_marginBottom="8dp" />
+
+                <Button
+                    android:id="@+id/btnInstallDriver"
+                    android:layout_width="match_parent"
+                    android:layout_height="36dp"
+                    android:text="📦 Instalar Driver (.zip / .so)"
+                    android:textColor="#F8FAFC"
+                    android:textSize="12sp"
+                    android:background="@drawable/button_bg_secondary"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp" />
 
             </LinearLayout>
 

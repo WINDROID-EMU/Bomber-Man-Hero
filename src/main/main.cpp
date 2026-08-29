@@ -37,6 +37,7 @@
 #include "recompui/program_config.h"
 #include "recompui/renderer.h"
 #include "recompui/config.h"
+#include "bmhero_render.h"
 #include "util/file.h"
 #include "recompinput/input_events.h"
 #include "recompinput/recompinput.h"
@@ -732,6 +733,15 @@ int main(int argc, char** argv) {
     std::filesystem::current_path("/var/data", ec);
 #endif
 
+#ifdef __ANDROID__
+    android_fs::init_directories();
+    android_fs::extract_apk_assets();
+    std::string app_path = android_fs::get_app_data_dir().string();
+    setenv("APP_FOLDER_PATH", app_path.c_str(), 1);
+    setenv("APP_PROGRAM_PATH", app_path.c_str(), 1);
+    setenv("HOME", app_path.c_str(), 1);
+#endif
+
     // Initialize native file dialogs.
     NFD_Init();
 
@@ -804,14 +814,7 @@ int main(int argc, char** argv) {
     };
 
     ultramodern::renderer::callbacks_t renderer_callbacks{
-        .create_render_context = [](uint8_t* rdram, ultramodern::renderer::WindowHandle window_handle, bool developer_mode) {
-#ifdef __ANDROID__
-            auto presentation_mode = ultramodern::renderer::PresentationMode::Console;
-#else
-            auto presentation_mode = ultramodern::renderer::PresentationMode::PresentEarly;
-#endif
-            return recompui::renderer::create_render_context(rdram, window_handle, presentation_mode, developer_mode);
-        },
+        .create_render_context = bmhero::renderer::create_render_context,
     };
 
     ultramodern::gfx_callbacks_t gfx_callbacks{

@@ -18,6 +18,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <string>
+#include <sys/stat.h>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_system.h>
@@ -219,17 +220,33 @@ void NFD_Quit() {
 
 #include <filesystem>
 
+namespace android_fs {
+    std::filesystem::path get_app_data_dir();
+}
+
 nfdresult_t NFD_OpenDialogN(nfdnchar_t** outPath,
                              const nfdnfilteritem_t* filterList,
                              nfdfiltersize_t filterCount,
                              const nfdnchar_t* defaultPath)
 {
-    std::filesystem::path rom_path("/sdcard/BMH/bmhero.z64");
-    if (std::filesystem::exists(rom_path)) {
-        *outPath = NFDi_Malloc<nfdnchar_t>(rom_path.string().length() + 1);
-        if (*outPath) {
-            strcpy(*outPath, rom_path.string().c_str());
-            return NFD_OKAY;
+    std::vector<std::filesystem::path> candidates = {
+        android_fs::get_app_data_dir() / "bmhero.z64",
+        android_fs::get_app_data_dir() / "roms/bmhero.z64",
+        std::filesystem::path("/sdcard/BMH/bmhero.z64"),
+        std::filesystem::path("/sdcard/bmhero.z64"),
+        std::filesystem::path("/storage/emulated/0/BMH/bmhero.z64"),
+        std::filesystem::path("/storage/emulated/0/bmhero.z64")
+    };
+
+    for (const auto& rom_path : candidates) {
+        std::error_code ec;
+        if (std::filesystem::exists(rom_path, ec) && std::filesystem::file_size(rom_path, ec) > 0) {
+            *outPath = NFDi_Malloc<nfdnchar_t>(rom_path.string().length() + 1);
+            if (*outPath) {
+                strcpy(*outPath, rom_path.string().c_str());
+                LOGI("Found ROM at: %s", rom_path.string().c_str());
+                return NFD_OKAY;
+            }
         }
     }
 
@@ -328,18 +345,21 @@ extern "C" void init_adrenotools_driver() {
 
     std::filesystem::path internal_path(internal_dir);
     std::filesystem::path drivers_dir = internal_path / "drivers";
-    std::filesystem::create_directories(drivers_dir);
+    std::filesystem::path turnip_dir = drivers_dir / "turnip";
+    std::filesystem::create_directories(turnip_dir);
 
-    // Extract drivers from APK assets to internal app storage
-    std::vector<std::string> driver_assets = {
-        "drivers/vulkan.ad07XX.so",
-        "drivers/meta.json"
+    // Extract built-in Turnip driver from APK assets to internal app storage
+    std::vector<std::pair<std::string, std::string>> driver_assets = {
+        {"drivers/vulkan.ad07XX.so", "drivers/turnip/vulkan.ad07XX.so"},
+        {"drivers/meta.json", "drivers/turnip/meta.json"},
+        {"drivers/vulkan.ad07XX.so", "drivers/vulkan.ad07XX.so"},
+        {"drivers/meta.json", "drivers/meta.json"}
     };
 
-    for (const auto& rel_path : driver_assets) {
-        auto target_path = internal_path / rel_path;
+    for (const auto& [asset_path, target_rel] : driver_assets) {
+        auto target_path = internal_path / target_rel;
         if (!std::filesystem::exists(target_path) || std::filesystem::file_size(target_path) == 0) {
-            SDL_RWops* rw = SDL_RWFromFile(rel_path.c_str(), "rb");
+            SDL_RWops* rw = SDL_RWFromFile(asset_path.c_str(), "rb");
             if (rw) {
                 Sint64 size = SDL_RWsize(rw);
                 if (size > 0) {
@@ -351,6 +371,7 @@ extern "C" void init_adrenotools_driver() {
                     if (out) {
                         fwrite(buffer.data(), 1, size, out);
                         fclose(out);
+                        chmod(target_path.string().c_str(), 0755);
                         LOGI("Extracted driver asset to %s (%lld bytes)", target_path.c_str(), (long long)size);
                     }
                 } else {
@@ -363,30 +384,126 @@ extern "C" void init_adrenotools_driver() {
     // Enable Adreno GPU Turbo Mode
     adrenotools_set_turbo(true);
 
-    std::string hook_dir = "/data/app/com.bmherorecompiled/lib/arm64";
+    std::string hook_dir = "";
     Dl_info info;
     if (dladdr((void*)init_adrenotools_driver, &info) && info.dli_fname) {
         std::filesystem::path lib_path(info.dli_fname);
         hook_dir = lib_path.parent_path().string();
     }
+    if (hook_dir.empty()) {
+        hook_dir = "/data/app/com.bmherorecompiled/lib/arm64";
+    }
 
-    LOGI("AdrenoTools: hook_dir=%s, custom_driver_dir=%s", hook_dir.c_str(), drivers_dir.string().c_str());
+    // Read driver preferences from config.json
+    std::string driver_type = "turnip";
+    std::string custom_driver_path = "";
+    std::string custom_driver_lib = "";
 
-    void* handle = adrenotools_open_libvulkan(
-        RTLD_NOW,
-        ADRENOTOOLS_DRIVER_CUSTOM,
-        internal_dir,
-        hook_dir.c_str(),
-        drivers_dir.string().c_str(),
-        "vulkan.ad07XX.so",
-        nullptr,
-        nullptr
-    );
+    std::vector<std::string> config_paths = {
+        "/sdcard/BMH/config.json",
+        "/storage/emulated/0/BMH/config.json",
+        std::string(internal_dir) + "/config/config.json",
+        std::string(internal_dir) + "/config.json"
+    };
 
-    if (handle) {
-        LOGI("init_adrenotools_driver: Custom Adreno Vulkan driver loaded successfully!");
-    } else {
-        LOGW("init_adrenotools_driver: Custom driver failed to load, trying default driver with hooks...");
+    for (const auto& cp : config_paths) {
+        FILE* f = fopen(cp.c_str(), "r");
+        if (f) {
+            fseek(f, 0, SEEK_END);
+            long sz = ftell(f);
+            fseek(f, 0, SEEK_SET);
+            if (sz > 0 && sz < 1048576) {
+                std::vector<char> buf(sz + 1, 0);
+                fread(buf.data(), 1, sz, f);
+                std::string content(buf.data());
+
+                auto parse_json_key = [&](const std::string& key) -> std::string {
+                    auto pos = content.find("\"" + key + "\"");
+                    if (pos != std::string::npos) {
+                        auto colon = content.find(':', pos);
+                        if (colon != std::string::npos) {
+                            auto val_start = content.find('"', colon);
+                            if (val_start != std::string::npos) {
+                                auto val_end = content.find('"', val_start + 1);
+                                if (val_end != std::string::npos) {
+                                    return content.substr(val_start + 1, val_end - val_start - 1);
+                                }
+                            }
+                        }
+                    }
+                    return "";
+                };
+
+                std::string dt = parse_json_key("driverType");
+                if (!dt.empty()) driver_type = dt;
+
+                std::string cdp = parse_json_key("customDriverPath");
+                if (!cdp.empty()) custom_driver_path = cdp;
+
+                std::string cdl = parse_json_key("customDriverLibrary");
+                if (!cdl.empty()) custom_driver_lib = cdl;
+            }
+            fclose(f);
+            break;
+        }
+    }
+
+    LOGI("AdrenoTools: hook_dir=%s, selected driver_type=%s", hook_dir.c_str(), driver_type.c_str());
+
+    void* handle = nullptr;
+
+    if (driver_type == "custom" && !custom_driver_path.empty() && !custom_driver_lib.empty()) {
+        LOGI("init_adrenotools_driver: Attempting to load custom driver (%s / %s)...", custom_driver_path.c_str(), custom_driver_lib.c_str());
+        handle = adrenotools_open_libvulkan(
+            RTLD_NOW,
+            ADRENOTOOLS_DRIVER_CUSTOM,
+            internal_dir,
+            hook_dir.c_str(),
+            custom_driver_path.c_str(),
+            custom_driver_lib.c_str(),
+            nullptr,
+            nullptr
+        );
+        if (handle) {
+            LOGI("init_adrenotools_driver: Custom driver loaded successfully!");
+        } else {
+            LOGW("init_adrenotools_driver: Failed to load custom driver, falling back to Turnip...");
+        }
+    }
+
+    if (!handle && (driver_type == "turnip" || driver_type == "custom")) {
+        LOGI("init_adrenotools_driver: Attempting to load integrated Turnip driver (vulkan.ad07XX.so)...");
+        handle = adrenotools_open_libvulkan(
+            RTLD_NOW,
+            ADRENOTOOLS_DRIVER_CUSTOM,
+            internal_dir,
+            hook_dir.c_str(),
+            turnip_dir.string().c_str(),
+            "vulkan.ad07XX.so",
+            nullptr,
+            nullptr
+        );
+        if (!handle) {
+            handle = adrenotools_open_libvulkan(
+                RTLD_NOW,
+                ADRENOTOOLS_DRIVER_CUSTOM,
+                internal_dir,
+                hook_dir.c_str(),
+                drivers_dir.string().c_str(),
+                "vulkan.ad07XX.so",
+                nullptr,
+                nullptr
+            );
+        }
+        if (handle) {
+            LOGI("init_adrenotools_driver: Turnip Mesa driver loaded successfully!");
+        } else {
+            LOGW("init_adrenotools_driver: Turnip failed to load, falling back to system driver...");
+        }
+    }
+
+    if (!handle) {
+        LOGI("init_adrenotools_driver: Loading system default driver with AdrenoTools hooks...");
         handle = adrenotools_open_libvulkan(
             RTLD_NOW,
             0,
@@ -398,9 +515,9 @@ extern "C" void init_adrenotools_driver() {
             nullptr
         );
         if (handle) {
-            LOGI("init_adrenotools_driver: Default Vulkan driver loaded with AdrenoTools hooks!");
+            LOGI("init_adrenotools_driver: System Vulkan driver initialized with hooks!");
         } else {
-            LOGE("init_adrenotools_driver: Failed to open Vulkan driver via AdrenoTools!");
+            LOGW("init_adrenotools_driver: System Vulkan driver without hooks will be used.");
         }
     }
 #else
@@ -553,6 +670,84 @@ void extract_apk_assets() {
 }
 
 } // namespace android_fs
+
+// ============================================================
+// Virtual Touch Controller JNI Interface (Zelda64 Compatible)
+// ============================================================
+
+namespace {
+int g_virtualJoystickId = -1;
+SDL_Joystick* g_virtualJoystick = nullptr;
+SDL_JoystickID g_virtualJoystickInstanceId = -1;
+}
+
+extern "C" __attribute__((visibility("default"))) jboolean Java_com_bmherorecompiled_MainActivity_attachController(
+    JNIEnv*,
+    jobject) {
+    if (g_virtualJoystick != nullptr) {
+        return JNI_TRUE;
+    }
+
+    if ((SDL_WasInit(SDL_INIT_JOYSTICK) & SDL_INIT_JOYSTICK) == 0) {
+        LOGW("SDL joystick subsystem is not ready for touch controller");
+        return JNI_FALSE;
+    }
+
+    g_virtualJoystickId = SDL_JoystickAttachVirtual(SDL_JOYSTICK_TYPE_GAMECONTROLLER, 6, 16, 0);
+    if (g_virtualJoystickId < 0) {
+        LOGE("Could not attach touch controller: %s", SDL_GetError());
+        return JNI_FALSE;
+    }
+
+    g_virtualJoystick = SDL_JoystickOpen(g_virtualJoystickId);
+    if (g_virtualJoystick == nullptr) {
+        LOGE("Could not open touch controller: %s", SDL_GetError());
+        SDL_JoystickDetachVirtual(g_virtualJoystickId);
+        g_virtualJoystickId = -1;
+        g_virtualJoystickInstanceId = -1;
+        return JNI_FALSE;
+    }
+
+    g_virtualJoystickInstanceId = SDL_JoystickInstanceID(g_virtualJoystick);
+    LOGI("Touch controller attached as virtual joystick %d instance %d", g_virtualJoystickId, g_virtualJoystickInstanceId);
+    return JNI_TRUE;
+}
+
+extern "C" __attribute__((visibility("default"))) void Java_com_bmherorecompiled_MainActivity_detachController(
+    JNIEnv*,
+    jobject) {
+    if (g_virtualJoystick != nullptr) {
+        SDL_JoystickClose(g_virtualJoystick);
+        g_virtualJoystick = nullptr;
+    }
+    if (g_virtualJoystickId >= 0) {
+        SDL_JoystickDetachVirtual(g_virtualJoystickId);
+        g_virtualJoystickId = -1;
+    }
+    g_virtualJoystickInstanceId = -1;
+}
+
+extern "C" __attribute__((visibility("default"))) void Java_com_bmherorecompiled_MainActivity_setButton(
+    JNIEnv*,
+    jobject,
+    jint button,
+    jboolean value) {
+    if (g_virtualJoystick == nullptr) {
+        return;
+    }
+    SDL_JoystickSetVirtualButton(g_virtualJoystick, button, value ? 1 : 0);
+}
+
+extern "C" __attribute__((visibility("default"))) void Java_com_bmherorecompiled_MainActivity_setAxis(
+    JNIEnv*,
+    jobject,
+    jint axis,
+    jshort value) {
+    if (g_virtualJoystick == nullptr) {
+        return;
+    }
+    SDL_JoystickSetVirtualAxis(g_virtualJoystick, axis, value);
+}
 
 // ============================================================
 // SDL_main — called by SDL2's Android glue

@@ -42,8 +42,9 @@
         <!-- Main Game Activity -->
         <activity
             android:name=".MainActivity"
+            android:theme="@style/BMHeroTheme"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
-            android:screenOrientation="landscape"
+            android:screenOrientation="sensorLandscape"
             android:launchMode="singleTask"
             android:exported="false" />
 

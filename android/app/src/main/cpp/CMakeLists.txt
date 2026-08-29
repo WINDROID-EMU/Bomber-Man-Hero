@@ -22,7 +22,6 @@ add_compile_definitions(
     ANDROID
     HLSL_CPU
     RT64_SDL_WINDOW_VULKAN
-    PLUME_SDL_VULKAN_ENABLED
     BMHERO_ANDROID
 )
 
@@ -80,10 +79,16 @@ else()
     set(ADRENOTOOLS_ENABLED FALSE)
 endif()
 
+# Disable CLI tools in subprojects for Android
+set(ZSTD_BUILD_PROGRAMS OFF CACHE BOOL "" FORCE)
+set(ZSTD_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(ZSTD_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+set(ZSTD_BUILD_STATIC ON CACHE BOOL "" FORCE)
+
 # ---- RT64 ----
 set(RT64_STATIC TRUE)
 set(RT64_SDL_WINDOW_VULKAN TRUE)
-set(PLUME_SDL_VULKAN_ENABLED TRUE CACHE BOOL "" FORCE)
+set(PLUME_SDL_VULKAN_ENABLED FALSE CACHE BOOL "" FORCE)
 
 # Android system libraries
 find_library(log-lib log)
@@ -97,10 +102,24 @@ set(SDL2_FOUND TRUE)
 set(SDL2_INCLUDE_DIRS "${BMHERO_ROOT}/android/SDL2/include" "${BMHERO_ROOT}/android")
 set(SDL2_LIBRARIES "SDL2-static")
 
+if (NOT TARGET file_to_c)
+    add_executable(file_to_c IMPORTED GLOBAL)
+    set_target_properties(file_to_c PROPERTIES IMPORTED_LOCATION "${BMHERO_ROOT}/file_to_c")
+endif()
+
+if (NOT TARGET nfd)
+    add_library(nfd INTERFACE)
+    target_include_directories(nfd INTERFACE "${BMHERO_ROOT}/lib/rt64/src/contrib/nativefiledialog-extended/src/include")
+endif()
+
 add_subdirectory(${BMHERO_ROOT}/lib/rt64 ${CMAKE_BINARY_DIR}/rt64)
 # After rt64 target exists, add SDL2 includes and __ANDROID__ definition so rt64 compiles correctly
 target_include_directories(rt64 PRIVATE "${BMHERO_ROOT}/android/SDL2/include")
 target_compile_definitions(rt64 PUBLIC __ANDROID__)
+
+if (TARGET recompinput)
+    target_include_directories(recompinput PRIVATE "${BMHERO_ROOT}/android/SDL2/include")
+endif()
 # Ensure plume also has SDL2 includes (needed for SDL_vulkan.h on Android)
 if (TARGET plume)
     target_include_directories(plume PUBLIC "${BMHERO_ROOT}/android/SDL2/include")
@@ -214,6 +233,7 @@ add_library(BMHeroRecompiled SHARED
     ${BMHERO_ROOT}/src/main/launcher_animation.cpp
     ${BMHERO_ROOT}/src/main/register_overlays.cpp
     ${BMHERO_ROOT}/src/main/register_patches.cpp
+    ${BMHERO_ROOT}/src/main/rt64_render_context.cpp
     ${BMHERO_ROOT}/src/main/theme.cpp
 
     ${BMHERO_ROOT}/src/game/config.cpp
@@ -273,5 +293,11 @@ target_link_libraries(BMHeroRecompiled
     c++_shared
 )
 
-# Ensure file_to_c is built before BMHeroRecompiled
-add_dependencies(BMHeroRecompiled file_to_c)
+# Ensure file_to_c is built before BMHeroRecompiled if target exists
+if (TARGET file_to_c)
+    add_dependencies(BMHeroRecompiled file_to_c)
+endif()
+
+if (ADRENOTOOLS_ENABLED)
+    add_dependencies(BMHeroRecompiled main_hook file_redirect_hook gsl_alloc_hook hook_impl)
+endif()
