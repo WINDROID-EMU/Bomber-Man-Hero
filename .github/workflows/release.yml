@@ -1,4 +1,4 @@
-name: Build and Publish Release
+name: Build and Publish Android Release
 
 on:
   push:
@@ -26,20 +26,14 @@ permissions:
   contents: write
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-android-${{ github.ref }}
   cancel-in-progress: false
 
-env:
-  SDL2_VERSION: "2.30.3"
-  N64RECOMP_COMMIT: "98bf104b1b5ed83126af8bcab0cc964782617dbf"
-
 jobs:
-  # ============================================================
-  # 1. Android Build (APK)
-  # ============================================================
   build-android:
     name: Build Android APK
     runs-on: ubuntu-22.04
+
     steps:
       - name: Checkout source and submodules
         uses: actions/checkout@v4
@@ -52,6 +46,7 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
+          cache: 'gradle'
 
       - name: Set up Android SDK & NDK
         uses: android-actions/setup-android@v3
@@ -61,265 +56,44 @@ jobs:
           yes | sdkmanager --licenses || true
           sdkmanager "platforms;android-36" "build-tools;36.0.0" "cmake;3.22.1" "ndk;29.0.14206865" || sdkmanager --install "platforms;android-34" "ndk;26.1.10909125"
 
-      - name: Build Android APK
+      - name: Build Android Release APK
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon || ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleRelease --no-daemon
 
-      - name: Package Android Artifacts
+      - name: Package Release Artifacts
         run: |
-          mkdir -p release-android
+          mkdir -p release-output
           TAG="${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}"
+          
+          # Find generated release/debug APK
           APK_FILE=$(find android/app/build/outputs/apk -name "*.apk" | head -n 1)
-          if [ -n "$APK_FILE" ]; then
-            cp "$APK_FILE" "release-android/BMHeroRecompiled-Android-${TAG}.apk"
-            cd release-android
-            sha256sum "BMHeroRecompiled-Android-${TAG}.apk" > "BMHeroRecompiled-Android-${TAG}.apk.sha256"
-          else
-            echo "Error: No APK file generated!" >&2
+          if [ -z "$APK_FILE" ]; then
+            echo "Error: No APK file found in build outputs!" >&2
             exit 1
           fi
-
-      - name: Upload Android Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-android
-          path: release-android/*
-          retention-days: 1
-
-  # ============================================================
-  # 2. Linux x64 Build (Tarball)
-  # ============================================================
-  build-linux:
-    name: Build Linux x64
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout source and submodules
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          fetch-depth: 0
-
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            cmake \
-            ninja-build \
-            clang-15 \
-            lld \
-            llvm \
-            gcc-11 \
-            g++-11 \
-            libgtk-3-dev \
-            libfreetype6-dev \
-            libfuse2 \
-            pkg-config \
-            wget
-
-          wget -q "https://github.com/libsdl-org/SDL/releases/download/release-${SDL2_VERSION}/SDL2-${SDL2_VERSION}.tar.gz"
-          tar -xzf "SDL2-${SDL2_VERSION}.tar.gz"
-          cd "SDL2-${SDL2_VERSION}"
-          ./configure --prefix=/usr/local
-          make -j"$(nproc)"
-          sudo make install
-          sudo ldconfig
-
-      - name: Retrieve authorized ROM asset (if secret present)
-        if: env.BMHERO_SECRET != ''
-        env:
-          BMHERO_SECRET: ${{ secrets.BMHERO_RECOMP }}
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ secrets.BMHERO_REPO_WITH_PAT }}
-          token: ${{ secrets.BMHERO_RECOMP }}
-          path: bmhero-private
-
-      - name: Prepare ROM asset
-        run: |
-          if [ -f bmhero-private/bmhero.z64 ]; then
-            cp bmhero-private/bmhero.z64 ./bmhero.z64
-          fi
-
-      - name: Build N64Recomp and RSPRecomp
-        run: |
-          git clone --recurse-submodules https://github.com/Mr-Wiseguy/N64Recomp.git N64RecompSource
-          git -C N64RecompSource checkout "${N64RECOMP_COMMIT}"
-          git -C N64RecompSource submodule update --init --recursive
-          cmake -S N64RecompSource -B N64RecompSource/cmake-build \
-            -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_C_COMPILER=gcc-11 \
-            -DCMAKE_CXX_COMPILER=g++-11
-          cmake --build N64RecompSource/cmake-build --target N64RecompCLI RSPRecomp -j"$(nproc)"
-          cp N64RecompSource/cmake-build/N64Recomp ./N64Recomp
-          cp N64RecompSource/cmake-build/RSPRecomp ./RSPRecomp
-
-      - name: Generate recompiled sources if ROM present
-        run: |
-          if [ -f bmhero.z64 ]; then
-            ./N64Recomp bmhero.toml
-            ./RSPRecomp aspMain.toml
-            make -C patches CC=clang-15 LD=ld.lld
-            ./N64Recomp patches.toml
-          fi
-
-      - name: Configure and build BMHeroRecompiled
-        run: |
-          cmake -S . -B build-cmake \
-            -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_C_COMPILER=clang-15 \
-            -DCMAKE_CXX_COMPILER=clang++-15
-          cmake --build build-cmake --target BMHeroRecompiled -j"$(nproc)"
-
-      - name: Package Linux release
-        run: |
-          TAG="${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}"
-          mkdir -p release-linux/package
-          cp build-cmake/BMHeroRecompiled release-linux/package/
-          cp -r assets release-linux/package/
-          cp recompcontrollerdb.txt release-linux/package/
-          cd release-linux
-          tar -czf "BMHeroRecompiled-Linux-x64-${TAG}.tar.gz" -C package .
-          sha256sum "BMHeroRecompiled-Linux-x64-${TAG}.tar.gz" > "BMHeroRecompiled-Linux-x64-${TAG}.tar.gz.sha256"
-          rm -rf package
-
-      - name: Upload Linux Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-linux
-          path: release-linux/*
-          retention-days: 1
-
-  # ============================================================
-  # 3. Windows x64 Build (ZIP)
-  # ============================================================
-  build-windows:
-    name: Build Windows x64
-    runs-on: windows-latest
-    steps:
-      - name: Checkout source and submodules
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          fetch-depth: 0
-
-      - name: Install Windows Tools
-        run: |
-          choco install ninja
-
-      - name: Download Portable LLVM
-        shell: pwsh
-        run: |
-          $ProgressPreference = 'SilentlyContinue'
-          Invoke-WebRequest -Uri "https://github.com/llvm/llvm-project/releases/download/llvmorg-19.1.3/LLVM-19.1.3-Windows-X64.tar.xz" -OutFile "LLVM.tar.xz"
-          New-Item -ItemType Directory -Path portable-llvm > $null
-          7z x LLVM.tar.xz
-          7z x LLVM.tar -oportable-llvm
-
-      - name: Configure Developer Command Prompt
-        uses: ilammy/msvc-dev-cmd@v1
-
-      - name: Retrieve authorized ROM asset (if secret present)
-        if: env.BMHERO_SECRET != ''
-        env:
-          BMHERO_SECRET: ${{ secrets.BMHERO_RECOMP }}
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ secrets.BMHERO_REPO_WITH_PAT }}
-          token: ${{ secrets.BMHERO_RECOMP }}
-          path: bmhero-private
-
-      - name: Prepare ROM asset
-        shell: pwsh
-        run: |
-          if (Test-Path "bmhero-private\bmhero.z64") {
-            Copy-Item "bmhero-private\bmhero.z64" ".\bmhero.z64"
-          }
-
-      - name: Build N64Recomp and RSPRecomp
-        shell: pwsh
-        run: |
-          git clone --recurse-submodules https://github.com/Mr-Wiseguy/N64Recomp.git N64RecompSource
-          Set-Location N64RecompSource
-          git checkout ${{ env.N64RECOMP_COMMIT }}
-          git submodule update --init --recursive
-          $cpuCores = (Get-CimInstance -ClassName Win32_Processor).NumberOfLogicalProcessors
-          cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=ninja -G Ninja -S . -B cmake-build
-          cmake --build cmake-build --config Release --target N64RecompCLI RSPRecomp -j $cpuCores
-          Copy-Item cmake-build/N64Recomp.exe ..
-          Copy-Item cmake-build/RSPRecomp.exe ..
-          Set-Location ..
-
-      - name: Generate recompiled sources if ROM present
-        shell: pwsh
-        run: |
-          if (Test-Path "bmhero.z64") {
-            .\N64Recomp.exe bmhero.toml
-            .\RSPRecomp.exe aspMain.toml
-          }
-
-      - name: Configure and build BMHeroRecompiled
-        shell: pwsh
-        run: |
-          $cpuCores = (Get-CimInstance -ClassName Win32_Processor).NumberOfLogicalProcessors
-          $env:PATH = ($env:PATH -split ';' | Where-Object { $_ -ne 'C:\Program Files\LLVM\bin' }) -join ';'
-          cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_C_COMPILER=clang-cl -DCMAKE_MAKE_PROGRAM=ninja -DPATCHES_C_COMPILER="..\portable-llvm\LLVM-19.1.3-Windows-X64\bin\clang" -DPATCHES_LD="..\portable-llvm\LLVM-19.1.3-Windows-X64\bin\ld.lld" -G Ninja -S . -B cmake-build -DCMAKE_CXX_FLAGS="-Xclang -fexceptions -Xclang -fcxx-exceptions"
-          cmake --build cmake-build --config Release --target BMHeroRecompiled -j $cpuCores
-
-      - name: Package Windows release
-        shell: pwsh
-        run: |
-          $TAG = if ("${{ github.event_name }}" -eq "workflow_dispatch") { "${{ inputs.version }}" } else { "${{ github.ref_name }}" }
-          New-Item -ItemType Directory -Path release-windows\package > $null
-          Copy-Item "cmake-build\BMHeroRecompiled.exe" "release-windows\package\"
-          Copy-Item "cmake-build\dxcompiler.dll" "release-windows\package\"
-          Copy-Item "cmake-build\dxil.dll" "release-windows\package\"
-          Copy-Item "cmake-build\SDL2.dll" "release-windows\package\"
-          Copy-Item -Recurse "assets" "release-windows\package\"
-          Copy-Item "recompcontrollerdb.txt" "release-windows\package\"
           
-          $zipName = "BMHeroRecompiled-Windows-x64-$TAG.zip"
-          Compress-Archive -Path "release-windows\package\*" -DestinationPath "release-windows\$zipName"
-          Set-Location release-windows
-          Get-FileHash -Algorithm SHA256 $zipName | ForEach-Object { "$($_.Hash.ToLower())  $zipName" } | Out-File -FilePath "$zipName.sha256" -Encoding ascii
-          Remove-Item -Recurse -Force package
-          Set-Location ..
+          OUTPUT_APK="release-output/BMHeroRecompiled-Android-${TAG}.apk"
+          cp "$APK_FILE" "$OUTPUT_APK"
+          cd release-output
+          sha256sum "BMHeroRecompiled-Android-${TAG}.apk" > "BMHeroRecompiled-Android-${TAG}.apk.sha256"
+          echo "Generated APK: $OUTPUT_APK"
+          ls -la
 
-      - name: Upload Windows Artifacts
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: release-windows
-          path: release-windows/*
-          retention-days: 1
-
-  # ============================================================
-  # 4. Publish Release
-  # ============================================================
-  publish-release:
-    name: Publish GitHub Release
-    needs: [build-android, build-linux, build-windows]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download all release artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: all-artifacts
-          merge-multiple: true
-
-      - name: List Artifacts
-        run: |
-          ls -la all-artifacts/
+          name: BMHeroRecompiled-Android-APK
+          path: release-output/*
+          retention-days: 7
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
-          name: BMHeroRecompiled ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+          name: BMHeroRecompiled Android ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
           draft: ${{ github.event_name == 'workflow_dispatch' && inputs.draft || false }}
           prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || false }}
           generate_release_notes: true
-          files: all-artifacts/*
+          files: release-output/*
