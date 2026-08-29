@@ -1,6 +1,5 @@
 # VSCode file settings
 .vscode/settings.json
-# .vscode/c_cpp_properties.json
 .vscode/launch.json
 
 # Input elf and rom files
@@ -13,11 +12,14 @@ patches/*.bin
 patches/*.elf
 patches/*.map
 
-# (RecompiledFuncs, RecompiledPatches, and rsp are tracked)
-
-# Linux build output
-build/
-*.o
+# Root build outputs
+/build/
+/build-cmake/
+/cmake-build/
+/build-recomp/
+/file_to_c
+/N64Recomp
+/RSPRecomp
 
 # Windows build output
 *.exe
@@ -25,12 +27,10 @@ build/
 *.lib
 *.pdb
 
-# Data dumps
+# Data dumps & backups
 data_dump.toml
 dump.toml
-
-# Local backups
-backups
+backups/
 
 # User-specific files
 *.rsuser
@@ -39,58 +39,22 @@ backups
 *.userosscache
 *.sln.docstates
 
-# Build results
-[Dd]ebug/
-[Dd]ebugPublic/
-[Rr]elease/
-[Rr]eleases/
-x64/
-x86/
-[Ww][Ii][Nn]32/
-[Aa][Rr][Mm]/
-[Aa][Rr][Mm]64/
-bld/
-[Bb]in/
-[Oo]bj/
-[Ll]og/
-[Ll]ogs/
-out/
-
-# Visual Studio 2015/2017 cache/options directory
+# Visual Studio cache
 .vs/
 vcpkg_installed/
 
 # Runtime files
 imgui.ini
 rt64.log
-
-node_modules/
-
-# Recompiler Linux binary
-N64Recomp
-RSPRecomp
 .DS_Store
-
-# Controller mappings file
-gamecontrollerdb.txt
-
-# RSP Microcode recompiled output
-aspMain.cpp
 
 # ================================================================
 # Android build
 # ================================================================
-# Gradle cache
 android/.gradle/
-
-# Gradle local properties (SDK/NDK paths)
 android/local.properties
-
-# IDE / IntelliJ cache (some project-level config is tracked)
 android/.idea/
 !.idea/misc.xml
-
-# Build outputs — APKs, compiled libs, intermediate artifacts
 android/app/build/
 android/app/.cxx/
 android/build/
@@ -98,10 +62,3 @@ android/build/
 # Keystores
 *.keystore
 *.jks
-
-# Temporary local build tools
-build-recomp/
-file_to_c
-
-# Captured core dumps from sandbox
-/proc/**/coredump_filter
