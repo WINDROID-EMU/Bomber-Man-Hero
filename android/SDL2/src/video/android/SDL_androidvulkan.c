@@ -35,6 +35,8 @@
 #include "SDL_androidvulkan.h"
 #include "SDL_syswm.h"
 
+extern void* g_adrenotools_libvulkan_handle;
+
 int Android_Vulkan_LoadLibrary(_THIS, const char *path)
 {
     VkExtensionProperties *extensions = NULL;
@@ -53,7 +55,11 @@ int Android_Vulkan_LoadLibrary(_THIS, const char *path)
     if (!path) {
         path = "libvulkan.so";
     }
-    _this->vulkan_config.loader_handle = SDL_LoadObject(path);
+    if (g_adrenotools_libvulkan_handle) {
+        _this->vulkan_config.loader_handle = g_adrenotools_libvulkan_handle;
+    } else {
+        _this->vulkan_config.loader_handle = SDL_LoadObject(path);
+    }
     if (!_this->vulkan_config.loader_handle) {
         return -1;
     }

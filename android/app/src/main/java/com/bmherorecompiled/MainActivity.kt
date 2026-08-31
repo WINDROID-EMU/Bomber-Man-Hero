@@ -85,6 +85,10 @@ class MainActivity : SDLActivity() {
 
     override fun getMainFunction(): String = "SDL_main"
 
+    override fun setOrientationBis(w: Int, h: Int, resizable: Boolean, hint: String?) {
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         super.onCreate(savedInstanceState)
@@ -107,42 +111,7 @@ class MainActivity : SDLActivity() {
     }
 
     private fun extractTurnipDriverIfNeeded() {
-        try {
-            val turnipDir = File(filesDir, "drivers/turnip")
-            if (!turnipDir.exists()) {
-                turnipDir.mkdirs()
-            }
-            val turnipSo = File(turnipDir, "vulkan.ad07XX.so")
-            val turnipMeta = File(turnipDir, "meta.json")
-
-            if (!turnipSo.exists() || turnipSo.length() == 0L) {
-                assets.open("drivers/vulkan.ad07XX.so").use { input ->
-                    turnipSo.outputStream().use { output ->
-                        input.copyTo(output)
-                    }
-                }
-                turnipSo.setExecutable(true)
-                Log.i("BMHMain", "Extracted turnip vulkan.ad07XX.so to ${turnipSo.absolutePath}")
-            }
-
-            if (!turnipMeta.exists() || turnipMeta.length() == 0L) {
-                assets.open("drivers/meta.json").use { input ->
-                    turnipMeta.outputStream().use { output ->
-                        input.copyTo(output)
-                    }
-                }
-                Log.i("BMHMain", "Extracted turnip meta.json to ${turnipMeta.absolutePath}")
-            }
-
-            val driversDir = File(filesDir, "drivers")
-            val driverSoRoot = File(driversDir, "vulkan.ad07XX.so")
-            if (!driverSoRoot.exists() || driverSoRoot.length() == 0L) {
-                turnipSo.copyTo(driverSoRoot, overwrite = true)
-                driverSoRoot.setExecutable(true)
-            }
-        } catch (e: Exception) {
-            Log.w("BMHMain", "Could not extract turnip driver from assets: ${e.message}")
-        }
+        ConfigManager.extractTurnipDriver(this)
     }
 
     override fun onResume() {
@@ -179,12 +148,15 @@ class MainActivity : SDLActivity() {
         val overlay = inflater.inflate(R.layout.touchcontrol_overlay, null)
         overlayView = overlay
 
-        val layoutParams = FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.MATCH_PARENT,
-            FrameLayout.LayoutParams.MATCH_PARENT
+        val layoutParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
         )
-        overlay.layoutParams = layoutParams
-        addContentView(overlay, layoutParams)
+        if (mLayout != null) {
+            mLayout.addView(overlay, layoutParams)
+        } else {
+            addContentView(overlay, layoutParams)
+        }
 
         buttonGroup = overlay.findViewById(R.id.button_group)
         buttonToggle = overlay.findViewById(R.id.buttonToggle)

@@ -14,7 +14,18 @@
             android:id="@+id/right_screen_area"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="@android:color/transparent" />
+            android:background="@android:color/transparent" >
+
+            <ImageView
+                android:id="@+id/dpad_cross"
+                android:layout_width="84dp"
+                android:layout_height="84dp"
+                android:layout_gravity="bottom|start"
+                android:layout_marginStart="49dp"
+                android:layout_marginBottom="184dp"
+                android:alpha="0.45"
+                android:src="@drawable/touch_dpad_cross" />
+        </FrameLayout>
 
         <FrameLayout
             android:id="@+id/left_joystick"
@@ -69,16 +80,6 @@
             android:text="Z"
             android:textColor="#38FFFFFF"
             android:textSize="16sp" />
-
-        <ImageView
-            android:id="@+id/dpad_cross"
-            android:layout_width="84dp"
-            android:layout_height="84dp"
-            android:layout_gravity="bottom|start"
-            android:layout_marginStart="49dp"
-            android:layout_marginBottom="184dp"
-            android:alpha="0.45"
-            android:src="@drawable/touch_dpad_cross" />
 
         <Button
             android:id="@+id/buttonDpadUp"

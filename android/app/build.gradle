@@ -20,9 +20,11 @@ android {
 
         externalNativeBuild {
             cmake {
-                cppFlags '-std=c++20 -fms-extensions -fno-strict-aliasing'
+                cppFlags '-std=c++20 -fms-extensions -fno-strict-aliasing -Wl,-z,max-page-size=16384'
+                cFlags '-Wl,-z,max-page-size=16384'
                 arguments '-DANDROID_STL=c++_shared',
                         '-DANDROID_PLATFORM=android-26',
+                        '-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384',
                         '-DRT64_STATIC=TRUE',
                         '-DRT64_SDL_WINDOW_VULKAN=TRUE',
                         '-DBMHERO_ANDROID=TRUE',
@@ -72,6 +74,10 @@ android {
         main {
             assets.srcDirs = ["${projectDir}/../../assets"]
         }
+    }
+
+    aaptOptions {
+        noCompress 'so', 'json'
     }
 
     packagingOptions {

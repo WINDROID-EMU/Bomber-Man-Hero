@@ -42,6 +42,7 @@ class TitleActivity : AppCompatActivity() {
 
         // Initialize config manager
         ConfigManager.load()
+        ConfigManager.extractTurnipDriver(this)
         checkAndRequestStoragePermissions()
 
         val btnStartGame = findViewById<Button>(R.id.btnStartGame)
@@ -84,8 +85,11 @@ class TitleActivity : AppCompatActivity() {
     }
 
     private fun launchGame() {
-        val intent = Intent(this, MainActivity::class.java)
+        val intent = Intent(this, MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        }
         startActivity(intent)
+        finish()
     }
 
     private fun openRomPicker() {

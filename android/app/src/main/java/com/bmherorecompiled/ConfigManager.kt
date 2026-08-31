@@ -111,4 +111,67 @@ object ConfigManager {
         customDriverLibrary = ""
         save()
     }
+
+    fun extractTurnipDriver(context: android.content.Context) {
+        try {
+            val turnipDir = File(context.filesDir, "drivers/turnip")
+            if (!turnipDir.exists()) {
+                turnipDir.mkdirs()
+            }
+            val driversDir = File(context.filesDir, "drivers")
+            if (!driversDir.exists()) {
+                driversDir.mkdirs()
+            }
+
+            val availableAssets = context.assets.list("drivers") ?: emptyArray()
+            Log.i(TAG, "Assets in drivers/: ${availableAssets.joinToString(", ")}")
+
+            for (assetName in availableAssets) {
+                try {
+                    val outFile = File(turnipDir, assetName)
+                    if (!outFile.exists() || outFile.length() == 0L) {
+                        context.assets.open("drivers/$assetName").use { input ->
+                            outFile.outputStream().use { output ->
+                                input.copyTo(output)
+                            }
+                        }
+                        if (assetName.endsWith(".so")) {
+                            outFile.setExecutable(true)
+                        }
+                        Log.i(TAG, "Extracted asset drivers/$assetName (${outFile.length()} bytes)")
+                    }
+
+                    if (assetName.endsWith(".so")) {
+                        // Also make lowercase alias
+                        val lowerFile = File(turnipDir, assetName.lowercase())
+                        if (!lowerFile.exists() || lowerFile.length() == 0L) {
+                            outFile.copyTo(lowerFile, overwrite = true)
+                            lowerFile.setExecutable(true)
+                        }
+
+                        // Copy to root drivers folder
+                        val rootFile = File(driversDir, assetName)
+                        val rootFileLower = File(driversDir, assetName.lowercase())
+                        if (!rootFile.exists() || rootFile.length() == 0L) {
+                            outFile.copyTo(rootFile, overwrite = true)
+                            rootFile.setExecutable(true)
+                        }
+                        if (!rootFileLower.exists() || rootFileLower.length() == 0L) {
+                            outFile.copyTo(rootFileLower, overwrite = true)
+                            rootFileLower.setExecutable(true)
+                        }
+                    } else if (assetName.endsWith(".json")) {
+                        val rootMeta = File(driversDir, assetName)
+                        if (!rootMeta.exists() || rootMeta.length() == 0L) {
+                            outFile.copyTo(rootMeta, overwrite = true)
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Error extracting asset drivers/$assetName: ${e.message}")
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not list or extract turnip drivers: ${e.message}")
+        }
+    }
 }

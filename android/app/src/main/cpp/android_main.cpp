@@ -335,12 +335,15 @@ void NFD_PathSet_Free(const nfdpathset_t* pathSet) {
 #include <adrenotools/driver.h>
 #endif
 
+extern "C" void* g_adrenotools_libvulkan_handle = nullptr;
+
 extern "C" void init_adrenotools_driver() {
 #ifdef BMHERO_ADRENOTOOLS_ENABLED
     LOGI("init_adrenotools_driver: initializing adrenotools");
     const char* internal_dir = SDL_AndroidGetInternalStoragePath();
     if (!internal_dir) {
-        internal_dir = "/data/data/com.bmherorecompiled/files";
+        LOGE("init_adrenotools_driver: internal storage path is null");
+        return;
     }
 
     std::filesystem::path internal_path(internal_dir);
@@ -426,7 +429,17 @@ extern "C" void init_adrenotools_driver() {
                             if (val_start != std::string::npos) {
                                 auto val_end = content.find('"', val_start + 1);
                                 if (val_end != std::string::npos) {
-                                    return content.substr(val_start + 1, val_end - val_start - 1);
+                                    std::string raw = content.substr(val_start + 1, val_end - val_start - 1);
+                                    std::string unescaped;
+                                    for (size_t i = 0; i < raw.size(); ++i) {
+                                        if (raw[i] == '\\' && i + 1 < raw.size() && raw[i + 1] == '/') {
+                                            unescaped += '/';
+                                            ++i;
+                                        } else {
+                                            unescaped += raw[i];
+                                        }
+                                    }
+                                    return unescaped;
                                 }
                             }
                         }
@@ -448,7 +461,8 @@ extern "C" void init_adrenotools_driver() {
         }
     }
 
-    LOGI("AdrenoTools: hook_dir=%s, selected driver_type=%s", hook_dir.c_str(), driver_type.c_str());
+    LOGI("AdrenoTools: hook_dir=%s, selected driver_type=%s, custom_path=%s, custom_lib=%s",
+         hook_dir.c_str(), driver_type.c_str(), custom_driver_path.c_str(), custom_driver_lib.c_str());
 
     // If system driver is selected, use standard system libvulkan.so directly without AdrenoTools hooks
     if (driver_type == "system") {
@@ -469,18 +483,48 @@ extern "C" void init_adrenotools_driver() {
             }
             custom_dir = cdp.parent_path().string();
         }
+        if (!custom_dir.empty() && custom_dir.back() != '/') custom_dir += "/";
 
         LOGI("init_adrenotools_driver: Attempting to load custom driver (%s / %s)...", custom_dir.c_str(), custom_lib.c_str());
-        handle = adrenotools_open_libvulkan(
-            RTLD_NOW,
-            ADRENOTOOLS_DRIVER_CUSTOM,
-            internal_dir,
-            hook_dir.c_str(),
-            custom_dir.c_str(),
-            custom_lib.c_str(),
-            nullptr,
-            nullptr
-        );
+
+        // First try the exact requested library name
+        if (!custom_lib.empty()) {
+            handle = adrenotools_open_libvulkan(
+                RTLD_NOW,
+                ADRENOTOOLS_DRIVER_CUSTOM,
+                internal_dir,
+                hook_dir.c_str(),
+                custom_dir.c_str(),
+                custom_lib.c_str(),
+                nullptr,
+                nullptr
+            );
+        }
+
+        // If not found, scan custom_dir for any .so files
+        if (!handle && std::filesystem::exists(custom_dir)) {
+            for (const auto& entry : std::filesystem::directory_iterator(custom_dir)) {
+                if (entry.is_regular_file() && entry.path().extension() == ".so") {
+                    std::string actual_lib = entry.path().filename().string();
+                    LOGI("init_adrenotools_driver: Probing custom library: %s in %s", actual_lib.c_str(), custom_dir.c_str());
+                    handle = adrenotools_open_libvulkan(
+                        RTLD_NOW,
+                        ADRENOTOOLS_DRIVER_CUSTOM,
+                        internal_dir,
+                        hook_dir.c_str(),
+                        custom_dir.c_str(),
+                        actual_lib.c_str(),
+                        nullptr,
+                        nullptr
+                    );
+                    if (handle) {
+                        LOGI("init_adrenotools_driver: Successfully loaded custom driver: %s", actual_lib.c_str());
+                        break;
+                    }
+                }
+            }
+        }
+
         if (handle) {
             LOGI("init_adrenotools_driver: Custom driver loaded successfully!");
         } else {
@@ -491,28 +535,34 @@ extern "C" void init_adrenotools_driver() {
     if (!handle && (driver_type == "turnip" || driver_type == "custom")) {
         LOGI("init_adrenotools_driver: Attempting to load integrated Turnip driver...");
         const char* driver_libs[] = { "vulkan.ad07XX.so", "vulkan.ad07xx.so", "vulkan.ad06XX.so", "vulkan.ad06xx.so" };
-        for (const char* dlib : driver_libs) {
-            handle = adrenotools_open_libvulkan(
-                RTLD_NOW,
-                ADRENOTOOLS_DRIVER_CUSTOM,
-                internal_dir,
-                hook_dir.c_str(),
-                turnip_dir.string().c_str(),
-                dlib,
-                nullptr,
-                nullptr
-            );
-            if (handle) break;
-            handle = adrenotools_open_libvulkan(
-                RTLD_NOW,
-                ADRENOTOOLS_DRIVER_CUSTOM,
-                internal_dir,
-                hook_dir.c_str(),
-                drivers_dir.string().c_str(),
-                dlib,
-                nullptr,
-                nullptr
-            );
+        std::string turnip_dir_str = turnip_dir.string();
+        if (!turnip_dir_str.empty() && turnip_dir_str.back() != '/') turnip_dir_str += "/";
+        std::string drivers_dir_str = drivers_dir.string();
+        if (!drivers_dir_str.empty() && drivers_dir_str.back() != '/') drivers_dir_str += "/";
+
+        std::vector<std::string> search_dirs = { turnip_dir_str, drivers_dir_str };
+
+        for (const auto& sdir : search_dirs) {
+            if (!std::filesystem::exists(sdir)) continue;
+            for (const char* dlib : driver_libs) {
+                std::string full_path = sdir + dlib;
+                if (!std::filesystem::exists(full_path)) continue;
+                LOGI("init_adrenotools_driver: Probing Turnip library %s in %s", dlib, sdir.c_str());
+                handle = adrenotools_open_libvulkan(
+                    RTLD_NOW,
+                    ADRENOTOOLS_DRIVER_CUSTOM,
+                    internal_dir,
+                    hook_dir.c_str(),
+                    sdir.c_str(),
+                    dlib,
+                    nullptr,
+                    nullptr
+                );
+                if (handle) {
+                    LOGI("init_adrenotools_driver: Loaded %s from %s", dlib, sdir.c_str());
+                    break;
+                }
+            }
             if (handle) break;
         }
 
@@ -523,7 +573,10 @@ extern "C" void init_adrenotools_driver() {
         }
     }
 
-    if (!handle) {
+    if (handle) {
+        g_adrenotools_libvulkan_handle = handle;
+        LOGI("init_adrenotools_driver: g_adrenotools_libvulkan_handle set to %p", handle);
+    } else {
         LOGI("init_adrenotools_driver: Using system default Vulkan driver without AdrenoTools hooks.");
     }
 #else

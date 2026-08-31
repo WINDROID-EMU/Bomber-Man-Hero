@@ -38,11 +38,16 @@ void *adrenotools_open_libvulkan(int dlopenFlags, int featureFlags, const char *
     // Verify that params for enabled features are correct
     struct stat buf{};
 
+    std::string driverDirFormatted = customDriverDir ? customDriverDir : "";
+    if (!driverDirFormatted.empty() && driverDirFormatted.back() != '/') {
+        driverDirFormatted += '/';
+    }
+
     if (featureFlags & ADRENOTOOLS_DRIVER_CUSTOM) {
-        if (!customDriverName || !customDriverDir)
+        if (!customDriverName || driverDirFormatted.empty())
             return nullptr;
 
-        if (stat((std::string(customDriverDir) + customDriverName).c_str(), &buf) != 0)
+        if (stat((driverDirFormatted + customDriverName).c_str(), &buf) != 0)
             return nullptr;
     }
 
@@ -84,7 +89,7 @@ void *adrenotools_open_libvulkan(int dlopenFlags, int featureFlags, const char *
         }
     }()};
 
-    initHookParam(new HookImplParams(featureFlags, tmpLibDir, hookLibDir, customDriverDir, customDriverName, fileRedirectDir, importMapping));
+    initHookParam(new HookImplParams(featureFlags, tmpLibDir, hookLibDir, driverDirFormatted.c_str(), customDriverName, fileRedirectDir, importMapping));
 
     // Load the libvulkan hook into the isolated namespace
     if (!linkernsbypass_namespace_dlopen("libmain_hook.so", RTLD_GLOBAL, hookNs))

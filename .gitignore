@@ -46,6 +46,8 @@ vcpkg_installed/
 # Runtime files
 imgui.ini
 rt64.log
+*.log
+log
 .DS_Store
 
 # ================================================================
