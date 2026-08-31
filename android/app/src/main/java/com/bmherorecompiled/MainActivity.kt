@@ -65,14 +65,12 @@ class MainActivity : SDLActivity() {
     private var buttonToggle: Button? = null
     private var leftJoystick: FrameLayout? = null
     private var leftJoystickKnob: ImageView? = null
-    private var rightScreenArea: View? = null
+    private var rightJoystick: FrameLayout? = null
+    private var rightJoystickKnob: ImageView? = null
 
     private var touchControllerAttached = false
     private var touchControllerAttachRetries = 0
     private val mainHandler = Handler(Looper.getMainLooper())
-    private var rightStickPointerId = MotionEvent.INVALID_POINTER_ID
-    private var rightStickStartX = 0f
-    private var rightStickStartY = 0f
 
     private val touchControllerAttachRetry = Runnable { retryTouchControllerAttach() }
 
@@ -106,6 +104,14 @@ class MainActivity : SDLActivity() {
         ConfigManager.load()
         extractTurnipDriverIfNeeded()
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                val lp = window.attributes
+                lp.preferredRefreshRate = ConfigManager.framerate.toFloat()
+                window.attributes = lp
+            } catch (ignored: Throwable) {}
+        }
+
         setupControllerOverlay()
         ensureTouchControllerAttached()
     }
@@ -114,9 +120,21 @@ class MainActivity : SDLActivity() {
         ConfigManager.extractTurnipDriver(this)
     }
 
+    external fun updateNativeConfig()
+
     override fun onResume() {
         super.onResume()
         ensureTouchControllerAttached()
+        
+        ConfigManager.load()
+        try {
+            updateNativeConfig()
+        } catch (e: UnsatisfiedLinkError) {
+            // Ignore if native library isn't fully loaded yet
+        }
+        
+        overlayView?.alpha = (ConfigManager.touchOpacity / 100f).coerceIn(0.1f, 1.0f)
+        overlayView?.invalidate()
     }
 
     override fun onDestroy() {
@@ -162,12 +180,14 @@ class MainActivity : SDLActivity() {
         buttonToggle = overlay.findViewById(R.id.buttonToggle)
         leftJoystick = overlay.findViewById(R.id.left_joystick)
         leftJoystickKnob = overlay.findViewById(R.id.left_joystick_knob)
-        rightScreenArea = overlay.findViewById(R.id.right_screen_area)
+        rightJoystick = overlay.findViewById(R.id.right_joystick)
+        rightJoystickKnob = overlay.findViewById(R.id.right_joystick_knob)
 
-        addButtonTouchListener(overlay.findViewById(R.id.buttonA), ControllerButtons.BUTTON_A)
-        addButtonTouchListener(overlay.findViewById(R.id.buttonB), ControllerButtons.BUTTON_X)
-        addButtonTouchListener(overlay.findViewById(R.id.buttonX), ControllerButtons.BUTTON_B)
-        addButtonTouchListener(overlay.findViewById(R.id.buttonY), ControllerButtons.BUTTON_Y)
+        // Map the SNES layout buttons to SDL physical buttons
+        addButtonTouchListener(overlay.findViewById(R.id.buttonX), ControllerButtons.BUTTON_Y) // Top
+        addButtonTouchListener(overlay.findViewById(R.id.buttonY), ControllerButtons.BUTTON_X) // Left
+        addButtonTouchListener(overlay.findViewById(R.id.buttonA), ControllerButtons.BUTTON_B) // Right
+        addButtonTouchListener(overlay.findViewById(R.id.buttonB), ControllerButtons.BUTTON_A) // Bottom
         addButtonTouchListener(overlay.findViewById(R.id.buttonL), ControllerButtons.BUTTON_LB)
         addAxisButtonTouchListener(overlay.findViewById(R.id.buttonR), ControllerButtons.AXIS_RT, Short.MAX_VALUE)
         addAxisButtonTouchListener(overlay.findViewById(R.id.buttonZ), ControllerButtons.AXIS_LT, Short.MAX_VALUE)
@@ -180,7 +200,7 @@ class MainActivity : SDLActivity() {
         addAxisButtonTouchListener(overlay.findViewById(R.id.buttonDpadRight), ControllerButtons.AXIS_RX, Short.MAX_VALUE)
 
         setupJoystick()
-        setupRightStickArea()
+        setupRightJoystick()
         setupToggleButton()
         applyTouchControlsVisibility()
     }
@@ -283,65 +303,44 @@ class MainActivity : SDLActivity() {
         }
     }
 
-    private fun setupRightStickArea() {
-        val area = rightScreenArea ?: return
-        val maxRadius = RIGHT_STICK_DRAG_RADIUS_DP * resources.displayMetrics.density
+    private fun setupRightJoystick() {
+        val joystick = rightJoystick ?: return
+        val knob = rightJoystickKnob ?: return
 
-        area.setOnTouchListener { view, event ->
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    if (event.getX(0) < view.width * 0.5f) {
-                        return@setOnTouchListener false
-                    }
-                    ensureTouchControllerAttached()
-                    rightStickPointerId = event.getPointerId(0)
-                    rightStickStartX = event.getX(0)
-                    rightStickStartY = event.getY(0)
-                    setAxis(ControllerButtons.AXIS_RX, 0)
-                    setAxis(ControllerButtons.AXIS_RY, 0)
-                    true
-                }
-                MotionEvent.ACTION_POINTER_DOWN -> {
-                    if (rightStickPointerId == MotionEvent.INVALID_POINTER_ID) {
-                        val pointerIndex = event.actionIndex
+        joystick.post {
+            val joystickCenterX = joystick.width / 2.0f
+            val joystickCenterY = joystick.height / 2.0f
+            val maxRadius = joystick.width / 2.0f - knob.width / 2.0f
+
+            joystick.setOnTouchListener { _, event ->
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
                         ensureTouchControllerAttached()
-                        rightStickPointerId = event.getPointerId(pointerIndex)
-                        rightStickStartX = event.getX(pointerIndex)
-                        rightStickStartY = event.getY(pointerIndex)
-                    }
-                    true
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    val pointerIndex = event.findPointerIndex(rightStickPointerId)
-                    if (pointerIndex >= 0) {
-                        var deltaX = event.getX(pointerIndex) - rightStickStartX
-                        var deltaY = event.getY(pointerIndex) - rightStickStartY
+                        var deltaX = event.x - joystickCenterX
+                        var deltaY = event.y - joystickCenterY
                         val distance = sqrt((deltaX * deltaX + deltaY * deltaY).toDouble()).toFloat()
                         if (distance > maxRadius && distance > 0.0f) {
                             val scale = maxRadius / distance
                             deltaX *= scale
                             deltaY *= scale
                         }
+
+                        knob.x = joystickCenterX + deltaX - knob.width / 2.0f
+                        knob.y = joystickCenterY + deltaY - knob.height / 2.0f
+
                         setAxis(ControllerButtons.AXIS_RX, (deltaX / maxRadius * Short.MAX_VALUE).toInt().toShort())
                         setAxis(ControllerButtons.AXIS_RY, (deltaY / maxRadius * Short.MAX_VALUE).toInt().toShort())
+                        true
                     }
-                    true
-                }
-                MotionEvent.ACTION_POINTER_UP -> {
-                    if (event.getPointerId(event.actionIndex) == rightStickPointerId) {
-                        rightStickPointerId = MotionEvent.INVALID_POINTER_ID
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        knob.x = joystickCenterX - knob.width / 2.0f
+                        knob.y = joystickCenterY - knob.height / 2.0f
                         setAxis(ControllerButtons.AXIS_RX, 0)
                         setAxis(ControllerButtons.AXIS_RY, 0)
+                        true
                     }
-                    true
+                    else -> true
                 }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    rightStickPointerId = MotionEvent.INVALID_POINTER_ID
-                    setAxis(ControllerButtons.AXIS_RX, 0)
-                    setAxis(ControllerButtons.AXIS_RY, 0)
-                    true
-                }
-                else -> true
             }
         }
     }
@@ -380,7 +379,9 @@ class MainActivity : SDLActivity() {
             File(filesDir, "bmhero.z64").absolutePath,
             File(filesDir, "roms/bmhero.z64").absolutePath,
             "/sdcard/BMH/bmhero.z64",
-            "/sdcard/bmhero.z64"
+            "/sdcard/bmhero.z64",
+            "/storage/emulated/0/BMH/bmhero.z64",
+            "/storage/emulated/0/bmhero.z64"
         )
         for (candidate in candidates) {
             val file = File(candidate)

@@ -142,28 +142,9 @@ static char* AndroidOpenFilePicker(const char* filterList) {
         return nullptr;
     }
 
-    // Get the SDLActivity instance (SDL2 stores this as a static in the Java layer)
-    // We call org.libsdl.app.SDLActivity.getContext() which returns the Activity
-    jclass sdlClass = env->FindClass("org/libsdl/app/SDLActivity");
-    if (!sdlClass) {
-        LOGE("AndroidOpenFilePicker: SDLActivity class not found");
-        if (needsDetach) g_jvm->DetachCurrentThread();
-        return nullptr;
-    }
-
-    jmethodID getContextMethod = env->GetStaticMethodID(sdlClass, "getContext",
-        "()Landroid/content/Context;");
-    if (!getContextMethod) {
-        env->DeleteLocalRef(sdlClass);
-        LOGE("AndroidOpenFilePicker: getContext method not found");
-        if (needsDetach) g_jvm->DetachCurrentThread();
-        return nullptr;
-    }
-
-    jobject activityObj = env->CallStaticObjectMethod(sdlClass, getContextMethod);
-    env->DeleteLocalRef(sdlClass);
+    jobject activityObj = (jobject)SDL_AndroidGetActivity();
     if (!activityObj) {
-        LOGE("AndroidOpenFilePicker: failed to get activity instance");
+        LOGE("AndroidOpenFilePicker: failed to get activity instance via SDL_AndroidGetActivity");
         if (needsDetach) g_jvm->DetachCurrentThread();
         return nullptr;
     }
@@ -335,7 +316,162 @@ void NFD_PathSet_Free(const nfdpathset_t* pathSet) {
 #include <adrenotools/driver.h>
 #endif
 
+#include <ultramodern/config.hpp>
+
 extern "C" void* g_adrenotools_libvulkan_handle = nullptr;
+
+namespace android_config {
+
+struct AppConfig {
+    std::string resolution = "720p";
+    std::string aspectRatio = "16:9";
+    std::string msaa = "Off";
+    int framerate = 60;
+    int bgmVolume = 100;
+    int sfxVolume = 100;
+    std::string driverType = "turnip";
+    std::string driverName = "Turnip (Mesa 26.0.0)";
+    std::string customDriverPath = "";
+    std::string customDriverLibrary = "";
+    int touchOpacity = 80;
+    int vibrationStrength = 100;
+};
+
+inline AppConfig g_config;
+inline bool g_config_loaded = false;
+
+inline std::string extract_json_string(const std::string& json, const std::string& key, const std::string& default_val = "") {
+    std::string search = "\"" + key + "\"";
+    auto pos = json.find(search);
+    if (pos == std::string::npos) return default_val;
+    auto colon = json.find(':', pos + search.length());
+    if (colon == std::string::npos) return default_val;
+    auto val_start = json.find('"', colon);
+    if (val_start == std::string::npos) return default_val;
+    auto val_end = json.find('"', val_start + 1);
+    if (val_end == std::string::npos) return default_val;
+    
+    std::string raw = json.substr(val_start + 1, val_end - val_start - 1);
+    std::string unescaped;
+    unescaped.reserve(raw.size());
+    for (size_t i = 0; i < raw.size(); ++i) {
+        if (raw[i] == '\\' && i + 1 < raw.size() && raw[i + 1] == '/') {
+            unescaped += '/';
+            ++i;
+        } else {
+            unescaped += raw[i];
+        }
+    }
+    return unescaped;
+}
+
+inline int extract_json_int(const std::string& json, const std::string& key, int default_val) {
+    std::string search = "\"" + key + "\"";
+    auto pos = json.find(search);
+    if (pos == std::string::npos) return default_val;
+    auto colon = json.find(':', pos + search.length());
+    if (colon == std::string::npos) return default_val;
+    auto num_start = json.find_first_of("0123456789-", colon);
+    if (num_start == std::string::npos) return default_val;
+    auto num_end = json.find_first_not_of("0123456789-", num_start);
+    std::string num_str = (num_end == std::string::npos) ? json.substr(num_start) : json.substr(num_start, num_end - num_start);
+    try {
+        return std::stoi(num_str);
+    } catch (...) {
+        return default_val;
+    }
+}
+
+inline void load() {
+    if (g_config_loaded) return;
+    const char* internal_dir = SDL_AndroidGetInternalStoragePath();
+    std::vector<std::string> config_paths = {
+        "/sdcard/BMH/config.json",
+        "/storage/emulated/0/BMH/config.json"
+    };
+    if (internal_dir) {
+        config_paths.push_back(std::string(internal_dir) + "/config/config.json");
+        config_paths.push_back(std::string(internal_dir) + "/config.json");
+    }
+
+    for (const auto& cp : config_paths) {
+        FILE* f = fopen(cp.c_str(), "r");
+        if (f) {
+            fseek(f, 0, SEEK_END);
+            long sz = ftell(f);
+            fseek(f, 0, SEEK_SET);
+            if (sz > 0 && sz < 1048576) {
+                std::vector<char> buf(sz + 1, 0);
+                fread(buf.data(), 1, sz, f);
+                std::string content(buf.data());
+
+                g_config.resolution = extract_json_string(content, "resolution", "720p");
+                g_config.aspectRatio = extract_json_string(content, "aspectRatio", "16:9");
+                g_config.msaa = extract_json_string(content, "msaa", "Off");
+                g_config.framerate = extract_json_int(content, "framerate", 60);
+                g_config.bgmVolume = extract_json_int(content, "bgmVolume", 100);
+                g_config.sfxVolume = extract_json_int(content, "sfxVolume", 100);
+                g_config.touchOpacity = extract_json_int(content, "touchOpacity", 80);
+                g_config.vibrationStrength = extract_json_int(content, "vibrationStrength", 100);
+                g_config.driverType = extract_json_string(content, "driverType", "turnip");
+                g_config.driverName = extract_json_string(content, "driverName", "Turnip (Mesa 26.0.0)");
+                g_config.customDriverPath = extract_json_string(content, "customDriverPath", "");
+                g_config.customDriverLibrary = extract_json_string(content, "customDriverLibrary", "");
+                LOGI("Config loaded: res=%s ar=%s msaa=%s fps=%d bgm=%d driver=%s",
+                     g_config.resolution.c_str(), g_config.aspectRatio.c_str(),
+                     g_config.msaa.c_str(), g_config.framerate, g_config.bgmVolume,
+                     g_config.driverType.c_str());
+                g_config_loaded = true;
+            }
+            fclose(f);
+            break;
+        }
+    }
+}
+
+inline void apply() {
+    load();
+    auto config = ultramodern::renderer::get_graphics_config();
+    config.api_option = ultramodern::renderer::GraphicsApi::Vulkan;
+    config.wm_option = ultramodern::renderer::WindowMode::Fullscreen;
+
+    // Aspect Ratio
+    if (g_config.aspectRatio == "4:3") {
+        config.ar_option = ultramodern::renderer::AspectRatio::Original;
+    } else {
+        config.ar_option = ultramodern::renderer::AspectRatio::Expand;
+    }
+
+    // MSAA
+    if (g_config.msaa == "2x") {
+        config.msaa_option = ultramodern::renderer::Antialiasing::MSAA2X;
+    } else if (g_config.msaa == "4x") {
+        config.msaa_option = ultramodern::renderer::Antialiasing::MSAA4X;
+    } else if (g_config.msaa == "8x") {
+        config.msaa_option = ultramodern::renderer::Antialiasing::MSAA8X;
+    } else {
+        config.msaa_option = ultramodern::renderer::Antialiasing::None;
+    }
+
+    // Resolution
+    if (g_config.resolution == "240p") {
+        config.res_option = ultramodern::renderer::Resolution::Original;
+    } else if (g_config.resolution == "480p") {
+        config.res_option = ultramodern::renderer::Resolution::Original2x;
+    } else {
+        config.res_option = ultramodern::renderer::Resolution::Auto;
+    }
+
+    // Target Refresh Rate / Framerate
+    if (g_config.framerate > 0) {
+        config.rr_option = ultramodern::renderer::RefreshRate::Manual;
+        config.rr_manual_value = g_config.framerate;
+    }
+
+    ultramodern::renderer::set_graphics_config(config);
+}
+
+} // namespace android_config
 
 extern "C" void init_adrenotools_driver() {
 #ifdef BMHERO_ADRENOTOOLS_ENABLED
@@ -397,69 +533,10 @@ extern "C" void init_adrenotools_driver() {
         hook_dir = "/data/app/com.bmherorecompiled/lib/arm64";
     }
 
-    // Read driver preferences from config.json
-    std::string driver_type = "turnip";
-    std::string custom_driver_path = "";
-    std::string custom_driver_lib = "";
-
-    std::vector<std::string> config_paths = {
-        "/sdcard/BMH/config.json",
-        "/storage/emulated/0/BMH/config.json",
-        std::string(internal_dir) + "/config/config.json",
-        std::string(internal_dir) + "/config.json"
-    };
-
-    for (const auto& cp : config_paths) {
-        FILE* f = fopen(cp.c_str(), "r");
-        if (f) {
-            fseek(f, 0, SEEK_END);
-            long sz = ftell(f);
-            fseek(f, 0, SEEK_SET);
-            if (sz > 0 && sz < 1048576) {
-                std::vector<char> buf(sz + 1, 0);
-                fread(buf.data(), 1, sz, f);
-                std::string content(buf.data());
-
-                auto parse_json_key = [&](const std::string& key) -> std::string {
-                    auto pos = content.find("\"" + key + "\"");
-                    if (pos != std::string::npos) {
-                        auto colon = content.find(':', pos);
-                        if (colon != std::string::npos) {
-                            auto val_start = content.find('"', colon);
-                            if (val_start != std::string::npos) {
-                                auto val_end = content.find('"', val_start + 1);
-                                if (val_end != std::string::npos) {
-                                    std::string raw = content.substr(val_start + 1, val_end - val_start - 1);
-                                    std::string unescaped;
-                                    for (size_t i = 0; i < raw.size(); ++i) {
-                                        if (raw[i] == '\\' && i + 1 < raw.size() && raw[i + 1] == '/') {
-                                            unescaped += '/';
-                                            ++i;
-                                        } else {
-                                            unescaped += raw[i];
-                                        }
-                                    }
-                                    return unescaped;
-                                }
-                            }
-                        }
-                    }
-                    return "";
-                };
-
-                std::string dt = parse_json_key("driverType");
-                if (!dt.empty()) driver_type = dt;
-
-                std::string cdp = parse_json_key("customDriverPath");
-                if (!cdp.empty()) custom_driver_path = cdp;
-
-                std::string cdl = parse_json_key("customDriverLibrary");
-                if (!cdl.empty()) custom_driver_lib = cdl;
-            }
-            fclose(f);
-            break;
-        }
-    }
+    android_config::load();
+    std::string driver_type = android_config::g_config.driverType;
+    std::string custom_driver_path = android_config::g_config.customDriverPath;
+    std::string custom_driver_lib = android_config::g_config.customDriverLibrary;
 
     LOGI("AdrenoTools: hook_dir=%s, selected driver_type=%s, custom_path=%s, custom_lib=%s",
          hook_dir.c_str(), driver_type.c_str(), custom_driver_path.c_str(), custom_driver_lib.c_str());
@@ -816,5 +893,26 @@ extern "C" __attribute__((visibility("default"))) void Java_com_bmherorecompiled
 // Android-specific #ifdefs will correctly route the program flow.
 // We include it here so android_main.cpp "owns" the compilation unit.
 #include "../../../../../../src/main/main.cpp"
+
+extern "C" __attribute__((visibility("default"))) void Java_com_bmherorecompiled_MainActivity_updateNativeConfig(JNIEnv*, jobject) {
+    android_config::g_config_loaded = false; // force reload
+    android_config::load();
+
+    // Apply audio volume
+    if (android_config::g_config.bgmVolume >= 0) {
+        try {
+            recompui::config::get_sound_config().set_option_value(recompui::config::sound::options::main_volume, static_cast<double>(android_config::g_config.bgmVolume));
+            recompui::config::get_sound_config().apply_option_value(recompui::config::sound::options::main_volume);
+        } catch (...) {}
+    }
+
+    // Apply rumble strength
+    if (android_config::g_config.vibrationStrength >= 0) {
+        try {
+            recompui::config::get_general_config().set_option_value(recompui::config::general::options::rumble_strength, static_cast<double>(android_config::g_config.vibrationStrength));
+            recompui::config::get_general_config().apply_option_value(recompui::config::general::options::rumble_strength);
+        } catch (...) {}
+    }
+}
 
 #endif // __ANDROID__

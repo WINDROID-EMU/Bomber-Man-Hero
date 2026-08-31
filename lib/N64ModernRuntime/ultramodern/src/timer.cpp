@@ -228,7 +228,25 @@ void ultramodern::sleep_milliseconds(uint32_t millis) {
 }
 
 void ultramodern::sleep_until(const std::chrono::high_resolution_clock::time_point& time_point) {
-    std::this_thread::sleep_until(time_point);
+    auto time_now = std::chrono::high_resolution_clock::now();
+    if (time_point <= time_now) {
+        return;
+    }
+    auto duration = time_point - time_now;
+    // Sleep for the majority of the duration if more than 1.5ms remains to save power/CPU
+    if (duration > std::chrono::microseconds(1500)) {
+        std::this_thread::sleep_for(duration - std::chrono::microseconds(1000));
+    }
+    // High-precision spin-wait for the final sub-millisecond to guarantee exact microsecond frame pacing
+    while (std::chrono::high_resolution_clock::now() < time_point) {
+#if defined(__aarch64__) || defined(__arm__)
+        asm volatile("yield");
+#elif defined(__x86_64__) || defined(_M_X64) || defined(__i386__)
+        #if defined(__GNUC__) || defined(__clang__)
+        __builtin_ia32_pause();
+        #endif
+#endif
+    }
 }
 
 #endif

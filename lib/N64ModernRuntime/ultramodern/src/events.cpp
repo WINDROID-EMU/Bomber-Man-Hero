@@ -8,6 +8,9 @@
 #include <mutex>
 #include <queue>
 #include <cstring>
+#if defined(__linux__) || defined(__ANDROID__)
+#include <sys/prctl.h>
+#endif
 
 #include "blockingconcurrentqueue.h"
 
@@ -230,6 +233,9 @@ void vi_thread_func() {
     // This thread should be prioritized over every other thread in the application, as it's what allows
     // the game to generate new audio and gfx lists.
     ultramodern::set_native_thread_priority(ultramodern::ThreadPriority::Critical);
+#if defined(__linux__) || defined(__ANDROID__)
+    prctl(PR_SET_TIMERSLACK, 1);
+#endif
     using namespace std::chrono_literals;
 
     int remaining_retraces = 1;

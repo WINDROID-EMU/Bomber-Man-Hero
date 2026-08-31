@@ -94,8 +94,10 @@ void ultramodern::set_native_thread_priority(ThreadPriority pri) {
     }
     // SetThreadPriority(GetCurrentThread(), nPriority);
 }
-#elif defined(__linux__)
+#elif defined(__linux__) || defined(__ANDROID__)
 #include <sys/prctl.h>
+#include <sys/resource.h>
+#include <unistd.h>
 
 void ultramodern::set_native_thread_name(const std::string& name) {
     if (name.length() > 15) {
@@ -107,31 +109,27 @@ void ultramodern::set_native_thread_name(const std::string& name) {
 }
 
 void ultramodern::set_native_thread_priority(ThreadPriority pri) {
-    // TODO linux thread priority
-    // printf("set_native_thread_priority unimplemented\n");
-    // int nPriority = THREAD_PRIORITY_NORMAL;
-
-    // // Convert ThreadPriority to Win32 priority
-    // switch (pri) {
-    //     case ThreadPriority::Low:
-    //         nPriority = THREAD_PRIORITY_BELOW_NORMAL;
-    //         break;
-    //     case ThreadPriority::Normal:
-    //         nPriority = THREAD_PRIORITY_NORMAL;
-    //         break;
-    //     case ThreadPriority::High:
-    //         nPriority = THREAD_PRIORITY_ABOVE_NORMAL;
-    //         break;
-    //     case ThreadPriority::VeryHigh:
-    //         nPriority = THREAD_PRIORITY_HIGHEST;
-    //         break;
-    //     case ThreadPriority::Critical:
-    //         nPriority = THREAD_PRIORITY_TIME_CRITICAL;
-    //         break;
-    //     default:
-    //         throw std::runtime_error("Invalid thread priority!");
-    //         break;
-    // }
+    int nice_val = 0;
+    switch (pri) {
+        case ThreadPriority::Low:
+            nice_val = 10;
+            break;
+        case ThreadPriority::Normal:
+            nice_val = 0;
+            break;
+        case ThreadPriority::High:
+            nice_val = -10;
+            break;
+        case ThreadPriority::VeryHigh:
+            nice_val = -16;
+            break;
+        case ThreadPriority::Critical:
+            nice_val = -20;
+            break;
+        default:
+            return;
+    }
+    setpriority(PRIO_PROCESS, 0, nice_val);
 }
 #elif defined(__APPLE__)
 void ultramodern::set_native_thread_name(const std::string& name) {

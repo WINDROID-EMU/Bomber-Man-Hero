@@ -25,8 +25,11 @@ add_compile_definitions(
     BMHERO_ANDROID
 )
 
-# Disable warnings that spam the build
+# High-performance compiler optimization options
 add_compile_options(
+    -O3
+    -fomit-frame-pointer
+    -ffast-math
     -fno-strict-aliasing
     -fms-extensions
     -Wno-unused-variable

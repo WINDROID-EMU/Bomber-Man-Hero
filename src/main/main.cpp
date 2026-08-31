@@ -86,6 +86,13 @@ ultramodern::gfx_callbacks_t::gfx_data_t create_gfx() {
     // Initialize AdrenoTools for custom Vulkan driver loading before SDL/Vulkan init
     extern void init_adrenotools_driver();
     init_adrenotools_driver();
+
+    android_config::apply();
+
+    SDL_SetHint(SDL_HINT_ANDROID_BLOCK_ON_PAUSE, "1");
+    SDL_SetHint(SDL_HINT_THREAD_FORCE_REALTIME_TIME_CRITICAL, "1");
+    SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
+    SDL_SetHint(SDL_HINT_AUDIO_RESAMPLING_MODE, "normal");
 #endif
 
     SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
@@ -294,19 +301,35 @@ void queue_samples(int16_t* audio_data, size_t sample_count) {
         throw std::runtime_error("Error using SDL audio converter");
     }
 
-    uint64_t cur_queued_microseconds = uint64_t(SDL_GetQueuedAudioSize(audio_device)) / bytes_per_frame * 1000000 / sample_rate;
+    uint32_t output_bytes_per_frame = output_channels * sizeof(float);
     uint32_t num_bytes_to_queue = audio_convert.len_cvt - output_channels * discarded_output_frames * sizeof(swap_buffer[0]);
     float* samples_to_queue = swap_buffer.data() + output_channels * discarded_output_frames / 2;
 
-    // Prevent audio latency from building up by skipping samples in incoming audio when too many samples are already queued.
-    // Skip samples based on how many microseconds of samples are queued already.
-    uint32_t skip_factor = cur_queued_microseconds / 100000;
-    if (skip_factor != 0) {
-        uint32_t skip_ratio = 1 << skip_factor;
-        num_bytes_to_queue /= skip_ratio;
-        for (size_t i = 0; i < num_bytes_to_queue / (output_channels * sizeof(swap_buffer[0])); i++) {
-            samples_to_queue[2 * i + 0] = samples_to_queue[2 * skip_ratio * i + 0];
-            samples_to_queue[2 * i + 1] = samples_to_queue[2 * skip_ratio * i + 1];
+    // Prevent audio latency from building up if too many samples are queued in SDL.
+    // Calculate queued time in microseconds based on the actual output sample rate and output frame size.
+    uint32_t cur_queued_bytes = SDL_GetQueuedAudioSize(audio_device);
+    uint64_t cur_queued_microseconds = 0;
+    if (output_bytes_per_frame > 0 && output_sample_rate > 0) {
+        uint64_t cur_queued_frames = cur_queued_bytes / output_bytes_per_frame;
+        cur_queued_microseconds = (cur_queued_frames * 1000000ULL) / output_sample_rate;
+    }
+
+    // On Android, allow up to 120ms of buffer before skipping, on desktop 100ms
+#if defined(__ANDROID__)
+    constexpr uint64_t max_audio_latency_us = 120000;
+#else
+    constexpr uint64_t max_audio_latency_us = 100000;
+#endif
+
+    if (cur_queued_microseconds > max_audio_latency_us) {
+        uint32_t skip_factor = static_cast<uint32_t>(cur_queued_microseconds / max_audio_latency_us);
+        if (skip_factor > 0) {
+            uint32_t skip_ratio = 1 << std::min(skip_factor, 3u);
+            num_bytes_to_queue /= skip_ratio;
+            for (size_t i = 0; i < num_bytes_to_queue / (output_channels * sizeof(swap_buffer[0])); i++) {
+                samples_to_queue[2 * i + 0] = samples_to_queue[2 * skip_ratio * i + 0];
+                samples_to_queue[2 * i + 1] = samples_to_queue[2 * skip_ratio * i + 1];
+            }
         }
     }
 
@@ -357,28 +380,47 @@ void set_frequency(uint32_t freq) {
 }
 
 bool reset_audio(uint32_t output_freq) {
+#if defined(__ANDROID__)
+    constexpr int default_samples = 1024; // Optimal for Android AudioTrack / AAudio
+#else
+    constexpr int default_samples = 512;  // Low latency for desktop
+#endif
+
+    SDL_SetHint(SDL_HINT_AUDIO_RESAMPLING_MODE, "normal");
+
     SDL_AudioSpec spec_desired{
         .freq = (int)output_freq,
         .format = AUDIO_F32,
         .channels = (Uint8)output_channels,
         .silence = 0, // calculated
-        .samples = 0x100, // Fairly small sample count to reduce the latency of internal buffering
+        .samples = default_samples,
         .padding = 0, // unused
         .size = 0, // calculated
         .callback = nullptr,
         .userdata = nullptr
     };
+    SDL_AudioSpec spec_obtained{};
 
-    audio_device = SDL_OpenAudioDevice(nullptr, false, &spec_desired, nullptr, 0);
+    audio_device = SDL_OpenAudioDevice(nullptr, false, &spec_desired, &spec_obtained, SDL_AUDIO_ALLOW_FREQUENCY_CHANGE | SDL_AUDIO_ALLOW_SAMPLES_CHANGE);
+    if (audio_device == 0) {
+        // Fallback without allow flags
+        audio_device = SDL_OpenAudioDevice(nullptr, false, &spec_desired, nullptr, 0);
+    }
     if (audio_device == 0) {
         std::string audio_error = std::string("No audio device could be found. Please make sure an audio device is available.\nError opening audio device: ") + std::string(SDL_GetError());
         recompui::message_box(audio_error.c_str());
         return false;
     }
 
+    if (spec_obtained.freq > 0) {
+        output_sample_rate = spec_obtained.freq;
+        output_channels = spec_obtained.channels;
+    } else {
+        output_sample_rate = output_freq;
+    }
+
     SDL_PauseAudioDevice(audio_device, 0);
 
-    output_sample_rate = output_freq;
     update_audio_converter();
 
     return true;
@@ -806,6 +848,16 @@ int main(int argc, char** argv) {
     recompinput::players::set_single_player_mode(true);
 
     banjo::init_config();
+
+#ifdef __ANDROID__
+    android_config::apply();
+    if (android_config::g_config.bgmVolume >= 0) {
+        try {
+            recompui::config::get_sound_config().set_option_value(recompui::config::sound::options::main_volume, static_cast<double>(android_config::g_config.bgmVolume));
+            recompui::config::get_sound_config().apply_option_value(recompui::config::sound::options::main_volume);
+        } catch (...) {}
+    }
+#endif
 
     recompui::register_launcher_init_callback(on_launcher_init);
     recompui::register_launcher_update_callback(banjo::launcher_animation_update);
